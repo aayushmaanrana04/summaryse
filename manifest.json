@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Summaryse - Local AI Text Summarizer",
+  "version": "1.0.0",
+  "description": "Summarize selected text using local AI inference with WebLLM",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "contextMenus",
+    "offscreen"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["utils.js", "content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_title": "Summaryse"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'"
+  }
+}

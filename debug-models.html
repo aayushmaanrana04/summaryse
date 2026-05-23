@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WebLLM Models Debug</title>
+  <style>
+    body { font-family: monospace; padding: 20px; max-width: 900px; }
+    pre { background: #f0f0f0; padding: 15px; border-radius: 5px; overflow-x: auto; }
+    h2 { color: #333; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>WebLLM Available Models</h1>
+  <p>This page lists all models available in the WebLLM bundle.</p>
+  <h2>Available Models:</h2>
+  <pre id="models"></pre>
+
+  <script type="module">
+    async function listModels() {
+      try {
+        const webllm = await import('./webllm-module.js');
+        console.log("WebLLM module:", webllm);
+
+        // Try to access model configuration
+        if (webllm.MLCEngine && webllm.MLCEngine.appConfig) {
+          const models = webllm.MLCEngine.appConfig.model_list;
+          document.getElementById('models').textContent = JSON.stringify(models, null, 2);
+        } else if (webllm.appConfig) {
+          const models = webllm.appConfig.model_list;
+          document.getElementById('models').textContent = JSON.stringify(models, null, 2);
+        } else {
+          // Try to access via window.mlc
+          const mlc = window.mlc || webllm.default;
+          if (mlc && mlc.appConfig && mlc.appConfig.model_list) {
+            document.getElementById('models').textContent = JSON.stringify(mlc.appConfig.model_list, null, 2);
+          } else {
+            document.getElementById('models').textContent = "Could not find model_list. Available exports:\n" + Object.keys(webllm).join('\n');
+          }
+        }
+      } catch (error) {
+        document.getElementById('models').textContent = "Error: " + error.message + "\n\nStack:\n" + error.stack;
+      }
+    }
+
+    listModels();
+  </script>
+</body>
+</html>

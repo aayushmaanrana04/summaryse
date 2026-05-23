@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Summaryse — Setup</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: #202124;
+      }
+    }
+
+    .container {
+      max-width: 500px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .emoji {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 500;
+      color: #202124;
+      margin-bottom: 12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      h1 {
+        color: #F1F3F4;
+      }
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: #5F6368;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .subtitle {
+        color: #9AA0A6;
+      }
+    }
+
+    .setup-content {
+      margin-bottom: 32px;
+    }
+
+    .step {
+      margin-bottom: 20px;
+      padding: 16px;
+      background: #F8F9FA;
+      border-radius: 8px;
+      text-align: left;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .step {
+        background: #292B2F;
+      }
+    }
+
+    .step-number {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      background: #1F2937;
+      color: white;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 28px;
+      font-weight: 500;
+      margin-right: 8px;
+      font-size: 14px;
+    }
+
+    .step-text {
+      display: inline-block;
+      color: #202124;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .step-text {
+        color: #E8EAED;
+      }
+    }
+
+    .progress-section {
+      display: none;
+      margin-bottom: 32px;
+    }
+
+    .progress-section.active {
+      display: block;
+    }
+
+    .loading-icon {
+      font-size: 40px;
+      animation: spin 2s linear infinite;
+      margin-bottom: 16px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .progress-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: #202124;
+      margin-bottom: 8px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .progress-title {
+        color: #F1F3F4;
+      }
+    }
+
+    .progress-text {
+      font-size: 13px;
+      color: #5F6368;
+      margin-bottom: 16px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .progress-text {
+        color: #9AA0A6;
+      }
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: #E8EAED;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .progress-bar {
+        background: #3C4043;
+      }
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #1F2937;
+      width: 0%;
+      transition: width 0.3s ease-out;
+    }
+
+    .progress-percent {
+      font-size: 12px;
+      font-weight: 500;
+      color: #1F2937;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .progress-percent {
+        color: #81C995;
+      }
+    }
+
+    .ready-section {
+      display: none;
+      text-align: center;
+    }
+
+    .ready-section.active {
+      display: block;
+    }
+
+    .checkmark {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .ready-title {
+      font-size: 20px;
+      font-weight: 500;
+      color: #1F2937;
+      margin-bottom: 12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .ready-title {
+        color: #81C995;
+      }
+    }
+
+    .ready-text {
+      font-size: 14px;
+      color: #5F6368;
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .ready-text {
+        color: #9AA0A6;
+      }
+    }
+
+    .button {
+      background: #1F2937;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease-out;
+    }
+
+    .button:hover {
+      background: #111827;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .button {
+        background: #81C995;
+        color: #1F2937;
+      }
+
+      .button:hover {
+        background: #A3E9CC;
+      }
+    }
+
+    .tips {
+      background: #F0F4FF;
+      border-left: 4px solid #1F2937;
+      padding: 12px;
+      border-radius: 4px;
+      margin-top: 16px;
+      text-align: left;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tips {
+        background: #292B2F;
+        border-left-color: #81C995;
+      }
+    }
+
+    .tips-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #1F2937;
+      margin-bottom: 6px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tips-title {
+        color: #81C995;
+      }
+    }
+
+    .tips-text {
+      font-size: 12px;
+      color: #1F2937;
+      line-height: 1.5;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tips-text {
+        color: #81C995;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="emoji">🔒</div>
+    <h1>Summaryse</h1>
+    <p class="subtitle">Summarize text. Privately. Offline.</p>
+
+    <div class="setup-content">
+      <div class="step">
+        <span class="step-number">1</span>
+        <span class="step-text">Select any text on a webpage</span>
+      </div>
+      <div class="step">
+        <span class="step-number">2</span>
+        <span class="step-text">Right-click → "Summarize with Summaryse"</span>
+      </div>
+      <div class="step">
+        <span class="step-number">3</span>
+        <span class="step-text">Get instant summaries</span>
+      </div>
+    </div>
+
+    <div class="progress-section active" id="progressSection">
+      <div class="loading-icon">⚙️</div>
+      <div class="progress-title">Setting up on first use...</div>
+      <p class="progress-text">Downloading AI model</p>
+      <p class="progress-text" style="font-size: 12px; color: #9AA0A6;">1.4 GB • This only happens once</p>
+
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-percent"><span id="progressPercent">0</span>%</div>
+
+      <div class="tips">
+        <div class="tips-title">💡 Tip</div>
+        <div class="tips-text">Future summaries will be instant once setup completes</div>
+      </div>
+    </div>
+
+    <div class="ready-section" id="readySection">
+      <div class="checkmark">✨</div>
+      <div class="ready-title">Ready to use!</div>
+      <p class="ready-text">Your Summaryse extension is all set up. Start summarizing text anywhere on the web.</p>
+      <button class="button" onclick="window.close()">Get Started</button>
+    </div>
+  </div>
+
+  <script src="onboarding.js"></script>
+</body>
+</html>
