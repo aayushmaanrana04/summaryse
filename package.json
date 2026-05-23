@@ -4,6 +4,8 @@
   "description": "A Chrome Extension that summarizes selected text using WebLLM for fully local, offline AI inference.",
   "main": "ai-worker.js",
   "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs && echo '✅ Build complete'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -14,6 +16,9 @@
     "@mlc-ai/web-llm": "^0.2.83"
   },
   "devDependencies": {
-    "esbuild": "^0.28.0"
+    "esbuild": "^0.28.0",
+    "esbuild-svelte": "^0.9.5",
+    "svelte": "^4.2.20",
+    "svelte-preprocess": "^5.1.0"
   }
 }

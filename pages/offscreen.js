@@ -1,6 +1,5 @@
 // Offscreen document for AI inference (Manifest V3)
-
-import * as webllm from "./webllm-npm.js";
+import * as webllm from '../webllm-npm.js';
 
 const MODEL_ID = "gemma-2-2b-it-q4f16_1-MLC";
 let engine = null;

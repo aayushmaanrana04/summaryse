@@ -1,12 +1,13 @@
 // Utilities for large text handling and chunking
+// ES module version for Svelte components
 
 // Rough token estimation (1 token ≈ 4 characters)
-function estimateTokens(text) {
+export function estimateTokens(text) {
   return Math.ceil(text.length / 4);
 }
 
 // Split text into chunks (simple, ultra-fast)
-function splitIntoChunks(text, maxTokensPerChunk = 1500) {
+export function splitIntoChunks(text, maxTokensPerChunk = 1500) {
   const estimatedTotalTokens = estimateTokens(text);
 
   // If text is small, return as single chunk
@@ -47,12 +48,12 @@ function splitIntoChunks(text, maxTokensPerChunk = 1500) {
 
 // Check if text is large enough to require chunking
 // Threshold: 1,300 tokens (slightly below one chunk max of 1,500)
-function isLargeText(text, tokenThreshold = 1300) {
+export function isLargeText(text, tokenThreshold = 1300) {
   return estimateTokens(text) > tokenThreshold;
 }
 
 // Get a chunk size estimate for display
-function getChunkEstimate(text, maxTokensPerChunk = 1500) {
+export function getChunkEstimate(text, maxTokensPerChunk = 1500) {
   const totalTokens = estimateTokens(text);
   return Math.ceil(totalTokens / maxTokensPerChunk);
 }

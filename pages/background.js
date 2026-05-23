@@ -4,7 +4,7 @@ const pendingRequests = new Map();
 
 async function ensureOffscreenExists() {
   try {
-    const offscreenUrl = chrome.runtime.getURL("offscreen.html");
+    const offscreenUrl = chrome.runtime.getURL("pages/offscreen.html");
     const existingContexts = await chrome.runtime.getContexts({
       contextTypes: ["OFFSCREEN_DOCUMENT"],
       documentUrls: [offscreenUrl]
@@ -13,7 +13,7 @@ async function ensureOffscreenExists() {
     if (existingContexts.length === 0) {
       console.log("[background] Creating offscreen document...");
       await chrome.offscreen.createDocument({
-        url: "offscreen.html",
+        url: "pages/offscreen.html",
         reasons: ["WORKERS"],
         justification: "Run local AI inference for text summarization"
       });

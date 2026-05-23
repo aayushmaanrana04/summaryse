@@ -14,17 +14,18 @@
     "<all_urls>"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "pages/background.js"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["utils.js", "content.js"],
+      "js": ["content-bundle.js"],
       "run_at": "document_end"
     }
   ],
   "action": {
-    "default_title": "Summaryse"
+    "default_title": "Summaryse",
+    "default_popup": "pages/popup.html"
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'"
