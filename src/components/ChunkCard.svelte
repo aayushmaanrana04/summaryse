@@ -1,13 +1,11 @@
 <script>
-  import { parseBullets } from '../utils.js';
+  import MarkdownContent from './MarkdownContent.svelte';
 
   export let summary = '';
   export let isStreaming = false;
   export let index = 0;
   let className = '';
   export { className as class };
-
-  $: bullets = parseBullets(summary);
 </script>
 
 <div class="chunk-card {className}">
@@ -16,22 +14,11 @@
       <!-- Empty state -->
       <p class="empty-text">Summarizing chunk {index + 1}...</p>
     {:else}
-      <!-- Bullets view -->
-      <div class="bullets-container">
-        {#each bullets as bullet, i (i)}
-          <div
-            class="bullet-point"
-            class:streaming={isStreaming && i === bullets.length - 1}
-          >
-            <span class="bullet-marker">•</span>
-            <span class="bullet-text">{bullet}</span>
-          </div>
-        {/each}
-
-        {#if isStreaming}
-          <div class="cursor"></div>
-        {/if}
-      </div>
+      <!-- Markdown content -->
+      <MarkdownContent content={summary} />
+      {#if isStreaming}
+        <div class="cursor"></div>
+      {/if}
     {/if}
   </div>
 </div>
@@ -119,48 +106,6 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
-  .bullets-container {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .bullet-point {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    animation: fadeInBullet 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .bullet-point.streaming {
-    animation: none;
-  }
-
-  @keyframes fadeInBullet {
-    from {
-      opacity: 0;
-      transform: translateX(-4px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  .bullet-marker {
-    color: var(--color-primary, #1E293B);
-    font-weight: 500;
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
-
-  .bullet-text {
-    color: rgba(30, 41, 59, 0.9);
-    font-size: 14px;
-    line-height: 1.5;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    word-break: break-word;
-  }
 
   .cursor {
     display: inline-block;

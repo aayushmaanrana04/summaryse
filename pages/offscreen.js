@@ -119,21 +119,21 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 
       // Adjust prompts for final summary refinement
       if (isFinalSummary) {
-        systemPrompt = "You are an expert at synthesizing summaries. Combine these chunk summaries into a single, coherent summary. Eliminate redundancy and create a natural flow. Maintain the same format as the input.";
-        userPrompt = `Synthesize these chunk summaries into one cohesive summary:\n\n${request.text}`;
+        systemPrompt = "You are an expert at synthesizing summaries. Combine these chunk summaries into a single, coherent summary using markdown format. Eliminate redundancy and create a natural flow. Use markdown formatting (bold for key terms, bullet points for items, etc).";
+        userPrompt = `Synthesize these chunk summaries into one cohesive summary in markdown format:\n\n${request.text}`;
       } else if (style === "tldr") {
         systemPrompt = "You are a concise summarization expert. Provide a one-sentence summary that captures the core idea. Be direct and factual. Maximum 15 words.";
         userPrompt = `In one sentence, what is the main idea of this text?\n\nText:\n${request.text}`;
       } else if (style === "paragraph") {
-        systemPrompt = "You are a skilled summarizer. Write a 2-3 sentence paragraph that captures the essence of the text. Be clear and natural. No bullet points.";
-        userPrompt = `Write a 2-3 sentence summary of this text as a paragraph:\n\nText:\n${request.text}`;
+        systemPrompt = "You are a skilled summarizer. Write a 2-3 sentence paragraph that captures the essence of the text. Use markdown formatting for emphasis. Be clear and natural.";
+        userPrompt = `Write a 2-3 sentence summary of this text in markdown format:\n\nText:\n${request.text}`;
       } else if (style === "takeaways") {
-        systemPrompt = "You are a summarization expert. List 3-4 key takeaways with brief explanations. Format as:\n• Takeaway: 1-line explanation\n\nBe specific and actionable.";
-        userPrompt = `What are the 3-4 most important takeaways from this text?\n\nText:\n${request.text}`;
+        systemPrompt = "You are a summarization expert. List 3-4 key takeaways with brief explanations in markdown format. Use bullet points for items and bold for important terms. Be specific and actionable.";
+        userPrompt = `What are the 3-4 most important takeaways from this text? Format as a markdown list:\n\nText:\n${request.text}`;
       } else {
         // bullets (default)
-        systemPrompt = "You are a concise summarization expert. Extract key information and present as bullet points. Each bullet should be clear, factual, and under 20 words. No fluff or explanations.";
-        userPrompt = `Summarize the key points from this text as bullet points. Include 3-5 main ideas.\n\nText:\n${request.text}`;
+        systemPrompt = "You are a concise summarization expert. Extract key information and present as a markdown-formatted list with bullet points. Each bullet should be clear, factual, and under 20 words. No fluff or explanations. Use **bold** for key terms.";
+        userPrompt = `Summarize the key points from this text as markdown bullet points. Include 3-5 main ideas:\n\nText:\n${request.text}`;
       }
 
       const messages = [

@@ -13,7 +13,8 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@mlc-ai/web-llm": "^0.2.83"
+    "@mlc-ai/web-llm": "^0.2.83",
+    "marked": "^13.0.0"
   },
   "devDependencies": {
     "esbuild": "^0.28.0",

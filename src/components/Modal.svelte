@@ -1,5 +1,5 @@
 <script>
-  import { parseBullets } from '../utils.js';
+  import MarkdownContent from './MarkdownContent.svelte';
 
   export let currentSummary = '';
   export let onClose = () => {};
@@ -37,17 +37,7 @@
     </div>
 
     <div class="modal-content">
-      <div class="bullets-container">
-        {#each bullets as bullet, i (i)}
-          <div
-            class="bullet-point"
-            style="animation-delay: {i * 30}ms"
-          >
-            <span class="bullet-marker">•</span>
-            <span class="bullet-text">{bullet}</span>
-          </div>
-        {/each}
-      </div>
+      <MarkdownContent content={currentSummary} />
     </div>
 
     <div class="modal-footer">
@@ -165,45 +155,6 @@
     background: rgba(0, 0, 0, 0.3);
   }
 
-  .bullets-container {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .bullet-point {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    animation: fadeInBullet 300ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
-    opacity: 0;
-  }
-
-  @keyframes fadeInBullet {
-    from {
-      opacity: 0;
-      transform: translateX(-8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  .bullet-marker {
-    color: var(--color-primary, #1E293B);
-    font-weight: 600;
-    flex-shrink: 0;
-    margin-top: 3px;
-  }
-
-  .bullet-text {
-    color: rgba(30, 41, 59, 0.9);
-    font-size: 15px;
-    line-height: 1.6;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    word-break: break-word;
-  }
 
   .modal-footer {
     display: flex;

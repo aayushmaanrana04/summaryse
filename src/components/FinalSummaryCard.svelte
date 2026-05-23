@@ -1,10 +1,8 @@
 <script>
-  import { parseBullets } from '../utils.js';
+  import MarkdownContent from './MarkdownContent.svelte';
 
   export let currentSummary = '';
   export let modalOpen = false;
-
-  $: bullets = parseBullets(currentSummary);
 </script>
 
 <div class="final-summary-card">
@@ -20,14 +18,7 @@
   </div>
 
   <div class="card-content">
-    <div class="bullets-container">
-      {#each bullets as bullet, i (i)}
-        <div class="bullet-point" style="animation-delay: {i * 30}ms">
-          <span class="bullet-marker">•</span>
-          <span class="bullet-text">{bullet}</span>
-        </div>
-      {/each}
-    </div>
+    <MarkdownContent content={currentSummary} />
   </div>
 </div>
 
@@ -114,44 +105,5 @@
     gap: 0;
   }
 
-  .bullets-container {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .bullet-point {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    animation: fadeInBullet 300ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
-    opacity: 0;
-  }
-
-  @keyframes fadeInBullet {
-    from {
-      opacity: 0;
-      transform: translateX(-4px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  .bullet-marker {
-    color: var(--color-primary, #1E293B);
-    font-weight: 500;
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
-
-  .bullet-text {
-    color: rgba(30, 41, 59, 0.9);
-    font-size: 14px;
-    line-height: 1.5;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    word-break: break-word;
-  }
 
 </style>
