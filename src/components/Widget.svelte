@@ -274,6 +274,10 @@
     onReset={reset}
     onClose={closeWidget}
     canCopy={phase === PHASES.COMPLETE && currentSummary}
+    {chunks}
+    {currentChunkIndex}
+    {phase}
+    isLargeText={isLargeTextFlag}
   />
 
   <ContentArea>

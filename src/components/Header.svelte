@@ -1,10 +1,16 @@
 <script>
+  import ChunkProgress from './ChunkProgress.svelte';
+
   export let summaryStyle = 'bullets';
   export let onStyleChange = () => {};
   export let onCopy = () => {};
   export let onReset = () => {};
   export let onClose = () => {};
   export let canCopy = false;
+  export let chunks = [];
+  export let currentChunkIndex = 0;
+  export let phase = 'init';
+  export let isLargeText = false;
 
   const styles = [
     { key: 'bullets', label: 'Bullets' },
@@ -14,9 +20,12 @@
 </script>
 
 <div class="header">
-  <div class="logo">
-    <span class="logo-icon">✨</span>
-    <span class="logo-text">Summaryse</span>
+  <div class="header-left">
+    <div class="logo">
+      <span class="logo-icon">✨</span>
+      <span class="logo-text">Summaryse</span>
+    </div>
+    <ChunkProgress {chunks} {currentChunkIndex} {phase} {isLargeText} />
   </div>
 
   <div class="controls">
@@ -70,6 +79,14 @@
     backdrop-filter: blur(8px);
     border-radius: 8px;
     border: 1px solid rgba(0, 0, 0, 0.05);
+    gap: 16px;
+  }
+
+  .header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
   }
 
   .logo {
