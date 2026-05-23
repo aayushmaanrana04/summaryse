@@ -114,32 +114,33 @@ document.addEventListener('keydown', (e) => {
 
 // Extract visible DOM text for auto-summarization
 function getVisiblePageText() {
-  const walker = document.createTreeWalker(
-    document.body,
-    NodeFilter.SHOW_TEXT,
-    null,
-    false
-  );
+  const hiddenTags = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'META', 'TITLE', 'HEAD']);
+  const text = [];
 
-  let text = '';
-  let node;
-
-  while ((node = walker.nextNode())) {
-    const parent = node.parentElement;
-    if (!parent) continue;
-
-    const style = window.getComputedStyle(parent);
-    if (style.display === 'none' || style.visibility === 'hidden') continue;
-
-    if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'META', 'TITLE'].includes(parent.tagName)) continue;
-
-    const textContent = node.textContent.trim();
-    if (textContent) {
-      text += textContent + ' ';
+  function walk(node) {
+    for (const child of node.childNodes) {
+      if (child.nodeType === 3) {
+        const parent = child.parentElement;
+        if (parent && !hiddenTags.has(parent.tagName)) {
+          const style = window.getComputedStyle(parent);
+          if (style.display !== 'none' && style.visibility !== 'hidden') {
+            const content = child.textContent.trim();
+            if (content) text.push(content);
+          }
+        }
+      } else if (child.nodeType === 1) {
+        if (!hiddenTags.has(child.tagName)) {
+          const style = window.getComputedStyle(child);
+          if (style.display !== 'none' && style.visibility !== 'hidden') {
+            walk(child);
+          }
+        }
+      }
     }
   }
 
-  return text.trim();
+  walk(document.body);
+  return text.join(' ').trim();
 }
 
 // Cleanup on page unload

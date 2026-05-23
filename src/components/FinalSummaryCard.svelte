@@ -1,18 +1,8 @@
 <script>
+  import { parseBullets } from '../utils.js';
+
   export let currentSummary = '';
   export let modalOpen = false;
-
-  // Parse bullet points from summary text
-  function parseBullets(text) {
-    if (!text) return [];
-    return text
-      .split('\n')
-      .filter(line => line.trim().length > 0)
-      .map(line => {
-        const cleaned = line.replace(/^[-•*]\s*/, '').trim();
-        return cleaned || line.trim();
-      });
-  }
 
   $: bullets = parseBullets(currentSummary);
 </script>
@@ -39,8 +29,6 @@
       {/each}
     </div>
   </div>
-
-  <div class="card-accent"></div>
 </div>
 
 <style>
@@ -166,7 +154,4 @@
     word-break: break-word;
   }
 
-  .card-accent {
-    display: none;
-  }
 </style>

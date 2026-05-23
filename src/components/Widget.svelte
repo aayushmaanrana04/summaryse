@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { estimateTokens, splitIntoChunks, isLargeText } from '../utils.js';
+  import { estimateTokens, splitIntoChunks, isLargeText, PHASES } from '../utils.js';
 
   import Header from './Header.svelte';
   import ContentArea from './ContentArea.svelte';
@@ -16,7 +16,7 @@
   export let text = '';
 
   // State
-  let phase = 'init'; // 'init' | 'loading-model' | 'summarizing' | 'streaming' | 'complete' | 'error'
+  let phase = PHASES.INIT;
   let summaryStyle = 'bullets';
   let currentSummary = '';
   let modelLoaded = false;
@@ -66,7 +66,7 @@
         startSummarization();
       } else {
         // First use - load model
-        phase = 'loading-model';
+        phase = PHASES.LOADING_MODEL;
         chrome.runtime.sendMessage({ type: 'LOAD_MODEL' });
       }
     } catch (error) {
@@ -94,7 +94,7 @@
 
   function startSummarization() {
     console.log('[summaryse-widget] Starting summarization');
-    phase = 'summarizing';
+    phase = PHASES.SUMMARIZING;
 
     isLargeTextFlag = isLargeText(text);
 
@@ -107,11 +107,11 @@
       console.log(`[summaryse-widget] Large text detected: ${chunks.length} chunks`);
 
       // Initialize with skeleton cards
-      phase = 'streaming';
+      phase = PHASES.STREAMING;
       processNextChunk();
     } else {
       // Small text: single summarization
-      phase = 'streaming';
+      phase = PHASES.STREAMING;
       chrome.runtime.sendMessage({
         type: 'SUMMARIZE',
         text: text,
@@ -192,9 +192,9 @@
       // Accumulate but don't render until COMPLETE
       currentSummary += token;
     } else if (message.chunkIndex !== undefined) {
-      // Chunk streaming
+      // Chunk streaming - mutate in place, then signal change without copying
       chunkSummaries[message.chunkIndex] += token;
-      chunkSummaries = [...chunkSummaries]; // Trigger reactivity
+      chunkSummaries = chunkSummaries;
     } else {
       // Single text streaming
       currentSummary += token;
@@ -205,12 +205,12 @@
     if (message.isFinalSummary) {
       currentSummary = message.summary || currentSummary;
       finalized = true;
-      phase = 'complete';
+      phase = PHASES.COMPLETE;
       console.log('[summaryse-widget] Summarization complete');
     } else if (message.chunkIndex !== undefined) {
       // Chunk complete
       chunkSummaries[message.chunkIndex] = message.summary || chunkSummaries[message.chunkIndex];
-      chunkSummaries = [...chunkSummaries];
+      chunkSummaries = chunkSummaries;
 
       currentChunkIndex++;
       if (currentChunkIndex < chunks.length) {
@@ -221,14 +221,14 @@
     } else {
       // Single text complete
       currentSummary = message.summary || currentSummary;
-      phase = 'complete';
+      phase = PHASES.COMPLETE;
       console.log('[summaryse-widget] Summarization complete');
     }
   }
 
   function showError(message) {
     errorMessage = message;
-    phase = 'error';
+    phase = PHASES.ERROR;
     console.error('[summaryse-widget]', message);
   }
 
@@ -239,7 +239,7 @@
   }
 
   function reset() {
-    phase = 'init';
+    phase = PHASES.INIT;
     currentSummary = '';
     chunkSummaries = [];
     currentChunkIndex = 0;
@@ -273,13 +273,13 @@
     onCopy={copy}
     onReset={reset}
     onClose={closeWidget}
-    canCopy={phase === 'complete' && currentSummary}
+    canCopy={phase === PHASES.COMPLETE && currentSummary}
   />
 
   <ContentArea>
-    {#if phase === 'init' || phase === 'loading-model'}
+    {#if phase === PHASES.INIT || phase === PHASES.LOADING_MODEL}
       <LoadingState {loadingProgress} isFirstUse={!modelLoaded} />
-    {:else if phase === 'summarizing' || phase === 'streaming'}
+    {:else if phase === PHASES.SUMMARIZING || phase === PHASES.STREAMING}
       {#if isLargeTextFlag}
         {#each chunks as chunk, i (i)}
           {#if chunkSummaries[i] === '' && !slidingOut}
@@ -288,7 +288,7 @@
           {#if chunkSummaries[i] !== ''}
             <ChunkCard
               summary={chunkSummaries[i]}
-              isStreaming={i === currentChunkIndex && phase === 'streaming'}
+              isStreaming={i === currentChunkIndex && phase === PHASES.STREAMING}
               index={i}
               class={slidingOut ? 'slide-out-left' : ''}
             />
@@ -301,11 +301,11 @@
       {:else}
         <ChunkCard
           summary={currentSummary}
-          isStreaming={phase === 'streaming'}
+          isStreaming={phase === PHASES.STREAMING}
           index={0}
         />
       {/if}
-    {:else if phase === 'complete'}
+    {:else if phase === PHASES.COMPLETE}
       {#if isLargeTextFlag && !slidingOut}
         {#each chunks as chunk, i (i)}
           <ChunkCard
@@ -322,7 +322,7 @@
       {#if stats}
         <StatsCard {stats} />
       {/if}
-    {:else if phase === 'error'}
+    {:else if phase === PHASES.ERROR}
       <ErrorCard {errorMessage} onRetry={reset} />
     {/if}
   </ContentArea>

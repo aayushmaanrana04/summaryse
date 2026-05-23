@@ -57,3 +57,25 @@ export function getChunkEstimate(text, maxTokensPerChunk = 1500) {
   const totalTokens = estimateTokens(text);
   return Math.ceil(totalTokens / maxTokensPerChunk);
 }
+
+// Parse bullet points from text
+export function parseBullets(text) {
+  if (!text) return [];
+  return text
+    .split('\n')
+    .filter(line => line.trim().length > 0)
+    .map(line => {
+      const cleaned = line.replace(/^[-•*]\s*/, '').trim();
+      return cleaned || line.trim();
+    });
+}
+
+// Phase constants for state machine
+export const PHASES = {
+  INIT: 'init',
+  LOADING_MODEL: 'loading-model',
+  SUMMARIZING: 'summarizing',
+  STREAMING: 'streaming',
+  COMPLETE: 'complete',
+  ERROR: 'error'
+};

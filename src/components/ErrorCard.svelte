@@ -11,8 +11,6 @@
 
     <button class="retry-btn" on:click={onRetry}>Try Again</button>
   </div>
-
-  <div class="card-accent"></div>
 </div>
 
 <style>
@@ -108,7 +106,4 @@
     transform: translateY(0);
   }
 
-  .card-accent {
-    display: none;
-  }
 </style>

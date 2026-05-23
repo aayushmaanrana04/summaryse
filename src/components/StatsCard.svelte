@@ -23,8 +23,6 @@
         <p class="stat-unit">smaller</p>
       </div>
     </div>
-
-    <div class="card-accent"></div>
   </div>
 {/if}
 
@@ -116,7 +114,4 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
-  .card-accent {
-    display: none;
-  }
 </style>

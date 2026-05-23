@@ -1,21 +1,11 @@
 <script>
+  import { parseBullets } from '../utils.js';
+
   export let summary = '';
   export let isStreaming = false;
   export let index = 0;
   let className = '';
   export { className as class };
-
-  // Parse bullet points from summary text
-  function parseBullets(text) {
-    if (!text) return [];
-    return text
-      .split('\n')
-      .filter(line => line.trim().length > 0)
-      .map(line => {
-        const cleaned = line.replace(/^[-•*]\s*/, '').trim();
-        return cleaned || line.trim();
-      });
-  }
 
   $: bullets = parseBullets(summary);
 </script>
@@ -44,8 +34,6 @@
       </div>
     {/if}
   </div>
-
-  <div class="card-accent"></div>
 </div>
 
 <style>
@@ -195,7 +183,4 @@
     }
   }
 
-  .card-accent {
-    display: none;
-  }
 </style>

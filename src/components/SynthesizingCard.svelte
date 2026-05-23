@@ -11,8 +11,6 @@
     </div>
     <p class="status-text">Combining chunks into final summary...</p>
   </div>
-
-  <div class="card-accent"></div>
 </div>
 
 <style>
@@ -107,7 +105,4 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
-  .card-accent {
-    display: none;
-  }
 </style>
