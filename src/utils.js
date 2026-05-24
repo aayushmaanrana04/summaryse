@@ -1,49 +1,82 @@
 // Utilities for large text handling and chunking
 // ES module version for Svelte components
 
-// Rough token estimation (1 token ≈ 4 characters)
+// Word-based token estimation (~1.4 tokens per word for English text)
 export function estimateTokens(text) {
-  return Math.ceil(text.length / 4);
+  const wordCount = text.trim().split(/\s+/).filter(w => w.length > 0).length;
+  return Math.ceil(wordCount * 1.4);
 }
 
-// Split text into chunks (simple, ultra-fast)
-export function splitIntoChunks(text, maxTokensPerChunk = 1500) {
-  const estimatedTotalTokens = estimateTokens(text);
-
-  // If text is small, return as single chunk
-  if (estimatedTotalTokens <= maxTokensPerChunk) {
-    return [{ text: text, index: 0, totalChunks: 1 }];
+// Segment text into sentences using Intl.Segmenter with regex fallback
+function segmentSentences(text) {
+  try {
+    const segmenter = new Intl.Segmenter('en', { granularity: 'sentence' });
+    return [...segmenter.segment(text)].map(s => s.segment).filter(s => s.trim().length > 0);
+  } catch (_) {
+    return (text.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g) || [text]).filter(s => s.trim().length > 0);
   }
+}
 
-  // Calculate target character length per chunk
-  const charPerToken = text.length / estimatedTotalTokens;
-  const charsPerChunk = Math.floor(maxTokensPerChunk * charPerToken);
-
+// Pack sentences greedily into chunks, with word-level fallback for oversized sentences
+function packSentencesIntoChunks(sentences, maxTokens) {
   const chunks = [];
-  let startIdx = 0;
+  let currentParts = [];
+  let currentTokens = 0;
 
-  // Ultra-simple: split by character count
-  while (startIdx < text.length) {
-    const endIdx = Math.min(startIdx + charsPerChunk, text.length);
-    const chunkText = text.substring(startIdx, endIdx).trim();
+  for (const sentence of sentences) {
+    const sentTokens = estimateTokens(sentence);
 
-    if (chunkText.length > 0) {
-      chunks.push({
-        text: chunkText,
-        index: chunks.length,
-        totalChunks: -1
-      });
+    if (sentTokens > maxTokens) {
+      // Sentence alone exceeds limit: flush current chunk, then word-split this sentence
+      if (currentParts.length > 0) {
+        chunks.push(currentParts.join(''));
+        currentParts = [];
+        currentTokens = 0;
+      }
+      // Word-boundary sub-split
+      const words = sentence.split(/\s+/).filter(w => w.length > 0);
+      let wordBuf = [];
+      let wordTokens = 0;
+      for (const word of words) {
+        if (wordTokens + 1 > maxTokens && wordBuf.length > 0) {
+          chunks.push(wordBuf.join(' '));
+          wordBuf = [word];
+          wordTokens = 1;
+        } else {
+          wordBuf.push(word);
+          wordTokens += 1;
+        }
+      }
+      if (wordBuf.length > 0) chunks.push(wordBuf.join(' '));
+      continue;
     }
 
-    startIdx = endIdx;
+    if (currentTokens + sentTokens > maxTokens && currentParts.length > 0) {
+      // Current chunk would overflow: seal it and start a new one
+      chunks.push(currentParts.join(''));
+      currentParts = [sentence];
+      currentTokens = sentTokens;
+    } else {
+      currentParts.push(sentence);
+      currentTokens += sentTokens;
+    }
   }
 
-  // Update totalChunks
-  chunks.forEach(chunk => {
-    chunk.totalChunks = chunks.length;
-  });
+  if (currentParts.length > 0) {
+    chunks.push(currentParts.join(''));
+  }
 
   return chunks;
+}
+
+// Split text into chunks (boundary-aware, sentence-respecting)
+export function splitIntoChunks(text, maxTokensPerChunk = 1500) {
+  if (estimateTokens(text) <= maxTokensPerChunk) {
+    return [{ text, index: 0, totalChunks: 1 }];
+  }
+
+  const rawChunks = packSentencesIntoChunks(segmentSentences(text), maxTokensPerChunk);
+  return rawChunks.map((t, i) => ({ text: t, index: i, totalChunks: rawChunks.length }));
 }
 
 // Check if text is large enough to require chunking

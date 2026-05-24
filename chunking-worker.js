@@ -1,43 +1,74 @@
 // Web Worker for text chunking - offload from main thread
+
 function estimateTokens(text) {
-  return Math.ceil(text.length / 4);
+  const wordCount = text.trim().split(/\s+/).filter(w => w.length > 0).length;
+  return Math.ceil(wordCount * 1.4);
+}
+
+function segmentSentences(text) {
+  try {
+    const segmenter = new Intl.Segmenter('en', { granularity: 'sentence' });
+    return [...segmenter.segment(text)].map(s => s.segment).filter(s => s.trim().length > 0);
+  } catch (_) {
+    return (text.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g) || [text]).filter(s => s.trim().length > 0);
+  }
+}
+
+function packSentencesIntoChunks(sentences, maxTokens) {
+  const chunks = [];
+  let currentParts = [];
+  let currentTokens = 0;
+
+  for (const sentence of sentences) {
+    const sentTokens = estimateTokens(sentence);
+
+    if (sentTokens > maxTokens) {
+      if (currentParts.length > 0) {
+        chunks.push(currentParts.join(''));
+        currentParts = [];
+        currentTokens = 0;
+      }
+      const words = sentence.split(/\s+/).filter(w => w.length > 0);
+      let wordBuf = [];
+      let wordTokens = 0;
+      for (const word of words) {
+        if (wordTokens + 1 > maxTokens && wordBuf.length > 0) {
+          chunks.push(wordBuf.join(' '));
+          wordBuf = [word];
+          wordTokens = 1;
+        } else {
+          wordBuf.push(word);
+          wordTokens += 1;
+        }
+      }
+      if (wordBuf.length > 0) chunks.push(wordBuf.join(' '));
+      continue;
+    }
+
+    if (currentTokens + sentTokens > maxTokens && currentParts.length > 0) {
+      chunks.push(currentParts.join(''));
+      currentParts = [sentence];
+      currentTokens = sentTokens;
+    } else {
+      currentParts.push(sentence);
+      currentTokens += sentTokens;
+    }
+  }
+
+  if (currentParts.length > 0) {
+    chunks.push(currentParts.join(''));
+  }
+
+  return chunks;
 }
 
 function splitIntoChunks(text, maxTokensPerChunk = 1500) {
-  const estimatedTotalTokens = estimateTokens(text);
-
-  if (estimatedTotalTokens <= maxTokensPerChunk) {
-    return [{ text: text, index: 0, totalChunks: 1 }];
+  if (estimateTokens(text) <= maxTokensPerChunk) {
+    return [{ text, index: 0, totalChunks: 1 }];
   }
 
-  const charPerToken = text.length / estimatedTotalTokens;
-  const charsPerChunk = Math.floor(maxTokensPerChunk * charPerToken);
-
-  const chunks = [];
-  let startIdx = 0;
-
-  while (startIdx < text.length) {
-    const endIdx = Math.min(startIdx + charsPerChunk, text.length);
-    const chunkText = text.substring(startIdx, endIdx).trim();
-
-    if (chunkText.length > 0) {
-      chunks.push({
-        text: chunkText,
-        index: chunks.length,
-        totalChunks: -1
-      });
-    }
-
-    startIdx = endIdx;
-  }
-
-  // Update totalChunks in single pass
-  const totalChunks = chunks.length;
-  chunks.forEach(chunk => {
-    chunk.totalChunks = totalChunks;
-  });
-
-  return chunks;
+  const rawChunks = packSentencesIntoChunks(segmentSentences(text), maxTokensPerChunk);
+  return rawChunks.map((t, i) => ({ text: t, index: i, totalChunks: rawChunks.length }));
 }
 
 self.onmessage = (event) => {

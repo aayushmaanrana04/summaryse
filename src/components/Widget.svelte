@@ -21,6 +21,36 @@
 
     export let text = "";
 
+    // Module-level session cache: persists across widget mounts, cleared on page unload
+    const MAX_SUMMARY_CACHE = 10;
+    const _summaryCache = new Map();
+
+    function _cacheKey(textContent, style) {
+        // djb2-based fingerprint for cache key
+        const sample = textContent.length > 500
+            ? textContent.slice(0, 250) + textContent.slice(-250)
+            : textContent;
+        const raw = sample + '|' + textContent.length + '|' + style;
+        let hash = 5381;
+        for (let i = 0; i < raw.length; i++) {
+            hash = ((hash << 5) + hash) ^ raw.charCodeAt(i);
+            hash = hash >>> 0;
+        }
+        return hash.toString(36);
+    }
+
+    function _getCached(textContent, style) {
+        return _summaryCache.get(_cacheKey(textContent, style)) || null;
+    }
+
+    function _setCached(textContent, style, result) {
+        const key = _cacheKey(textContent, style);
+        if (_summaryCache.size >= MAX_SUMMARY_CACHE) {
+            _summaryCache.delete(_summaryCache.keys().next().value);
+        }
+        _summaryCache.set(key, result);
+    }
+
     // State
     let phase = PHASES.INIT;
     let summaryStyle = "bullets";
@@ -51,6 +81,7 @@
     });
 
     onDestroy(() => {
+        chrome.runtime.onMessage.removeListener(handleBackgroundMessage);
         document.body.classList.remove("summaryse-backdrop-added");
     });
 
@@ -105,6 +136,17 @@
 
     function startSummarization() {
         console.log("[summaryse-widget] Starting summarization");
+
+        // Check cache first
+        const cached = _getCached(text, summaryStyle);
+        if (cached) {
+            console.log("[summaryse-widget] Cache hit — serving from session cache");
+            currentSummary = cached.currentSummary;
+            isLargeTextFlag = cached.isLargeTextFlag;
+            phase = PHASES.COMPLETE;
+            return;
+        }
+
         phase = PHASES.SUMMARIZING;
 
         const isShortTextFlag = isShortText(text);
@@ -266,6 +308,7 @@
             currentSummaryTokens = [];
             finalized = true;
             phase = PHASES.COMPLETE;
+            _setCached(text, summaryStyle, { currentSummary, isLargeTextFlag });
             console.log("[summaryse-widget] Summarization complete");
         } else if (message.chunkIndex !== undefined) {
             // Chunk complete - join tokens and finalize
@@ -284,6 +327,7 @@
             currentSummary = message.summary || currentSummaryTokens.join('');
             currentSummaryTokens = [];
             phase = PHASES.COMPLETE;
+            _setCached(text, summaryStyle, { currentSummary, isLargeTextFlag });
             console.log("[summaryse-widget] Summarization complete");
         }
     }
@@ -301,6 +345,9 @@
     }
 
     function reset() {
+        // Invalidate cache for this text so retry gets a fresh inference
+        _summaryCache.delete(_cacheKey(text, summaryStyle));
+
         phase = PHASES.INIT;
         currentSummary = "";
         currentSummaryTokens = [];

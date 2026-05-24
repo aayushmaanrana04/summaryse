@@ -2,9 +2,24 @@
 import * as webllm from '../webllm-npm.js';
 
 const MODEL_ID = "gemma-2-2b-it-q4f16_1-MLC";
+const MAX_INFERENCE_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 500;
+const RETRY_MAX_DELAY_MS = 8000;
+
 let engine = null;
 let modelLoading = false;
 let modelLoadPromise = null;
+
+function _retryDelay(attempt) {
+  const delay = Math.min(RETRY_BASE_DELAY_MS * Math.pow(2, attempt), RETRY_MAX_DELAY_MS);
+  const jitter = delay * 0.1 * Math.random();
+  return Math.floor(delay + jitter);
+}
+
+function _isEngineCorrupted(error) {
+  const msg = error.message || '';
+  return msg.includes('WebGPU') || msg.includes('device lost') || msg.includes('GPU');
+}
 
 // Detect best cache backend and GPU support
 async function detectOptimalBackend() {
@@ -44,6 +59,106 @@ async function detectGPUSupport() {
 }
 
 console.log("[offscreen] Offscreen document loaded");
+
+async function _runInference(request) {
+  console.log("[offscreen] Starting summarization with style:", request.style);
+
+  const style = request.style || "summary";
+  let systemPrompt, userPrompt;
+  const { chunkIndex, totalChunks, isChunk, isFinalSummary, isShortText } = request;
+
+  // Short text mode - TL;DR for social media and chat
+  if (isShortText) {
+    systemPrompt = `You are a master of concise communication. Distill the text into a single sharp TL;DR suitable for sharing on social media or chat.
+
+RULES:
+- ONE sentence maximum. If impossible, use TWO sentences only
+- Maximum 30 words total
+- Lead with the main finding or insight
+- Make it punchy and shareable
+- No "In summary" or meta phrases`;
+    userPrompt = `Create a TL;DR (one sentence, max 30 words):\n\n${request.text}`;
+  } else if (isFinalSummary) {
+    systemPrompt = `You are an expert synthesis researcher. Your role: merge multiple summaries into ONE coherent narrative revealing the author's core finding, not a collection of repeated points.
+
+CRITICAL RULES (no exceptions):
+- ELIMINATE ALL REPETITION: No point appears twice. Check each bullet against all others.
+- PRIORITIZE: Lead with the main finding/number (the 6%, the 3x threshold, the core insight)
+- ONE HEADING ONLY: Single # title capturing the overall argument, not multiple similar headings
+- QUANTIFY: Include specific numbers, percentages, measurements where available
+- METHODOLOGY FIRST: Explain HOW the finding was discovered before listing implications
+- ACTIONABLE INSIGHTS: End with recommendations/what to do with this knowledge
+- FORMAT: # Main Finding\\n\\nBackground context.\\n\\n**Key insight 1**: Why it matters.\\n**Key insight 2**: Implication.\\n**Key insight 3**: What to do about it.
+- Each point max 15 words, bold only critical metrics
+- Maximum 120 words total`;
+
+    userPrompt = `Synthesize these chunk summaries into one coherent markdown summary revealing the author's core message:\n\n${request.text}`;
+  } else {
+    // Chunk prompt - descriptive extraction for final synthesis
+    systemPrompt = `You are an expert editorial analyst extracting comprehensive insights from content. Your role is to capture what the author is communicating with enough detail that these insights can be synthesized into a coherent full summary.
+
+INSTRUCTIONS:
+- Format: # [Heading capturing main topic]\\n\\n**Key finding**: 1-2 sentences explaining the core claim or discovery\\n\\n**Supporting evidence**: Specific examples, numbers, methodologies, or reasoning\\n\\n**Why it matters**: Implications and significance\\n\\n**Context**: How this relates to broader themes
+- Extract specific numbers, percentages, measurements when available
+- Include the methodology/HOW if explaining a finding
+- Go deeper than surface facts - explain implications and connections
+- Use **bold** for critical metrics and concepts
+- Provide enough context that someone reading only this can understand the significance
+- Maximum 180 words total`;
+    userPrompt = `As an editorial analyst, extract the author's key findings and supporting evidence from this section with enough detail for synthesis:\n\n${request.text}`;
+  }
+
+  const messages = [
+    {
+      role: "system",
+      content: systemPrompt
+    },
+    {
+      role: "user",
+      content: userPrompt
+    }
+  ];
+
+  const asyncGen = await engine.chat.completions.create({
+    model: MODEL_ID,
+    messages: messages,
+    stream: true,
+    temperature: 0.2,
+    top_p: 0.9,
+    max_tokens: 200
+  });
+
+  let summary = "";
+  for await (const chunk of asyncGen) {
+    const token = chunk.choices[0]?.delta?.content || "";
+    if (token) {
+      summary += token;
+      chrome.runtime.sendMessage(
+        {
+          type: "TOKEN",
+          token: token,
+          requestId: request.requestId,
+          chunkIndex: chunkIndex,
+          totalChunks: totalChunks,
+          isFinalSummary: isFinalSummary
+        },
+        () => {}
+      );
+    }
+  }
+
+  chrome.runtime.sendMessage(
+    {
+      type: "COMPLETE",
+      summary: summary,
+      requestId: request.requestId,
+      chunkIndex: chunkIndex,
+      totalChunks: totalChunks,
+      isFinalSummary: isFinalSummary
+    },
+    () => {}
+  );
+}
 
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   try {
@@ -155,120 +270,33 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
         throw new Error("Model not loaded");
       }
 
-      console.log("[offscreen] Starting summarization with style:", request.style);
+      // Inference with retry logic
+      let lastError = null;
+      for (let attempt = 0; attempt <= MAX_INFERENCE_RETRIES; attempt++) {
+        try {
+          if (attempt > 0) {
+            const delay = _retryDelay(attempt - 1);
+            console.log(`[offscreen] Retry attempt ${attempt}/${MAX_INFERENCE_RETRIES} after ${delay}ms`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+          await _runInference(request);
+          lastError = null;
+          break; // Success — exit retry loop
+        } catch (err) {
+          lastError = err;
+          console.warn(`[offscreen] Inference attempt ${attempt + 1} failed:`, err.message);
 
-      const style = request.style || "summary";
-      let systemPrompt, userPrompt;
-      const { chunkIndex, totalChunks, isChunk, isFinalSummary, isShortText } = request;
-
-      // Short text mode - TL;DR for social media and chat
-      if (isShortText) {
-        systemPrompt = `You are a master of concise communication. Distill the text into a single sharp TL;DR suitable for sharing on social media or chat.
-
-RULES:
-- ONE sentence maximum. If impossible, use TWO sentences only
-- Maximum 30 words total
-- Lead with the main finding or insight
-- Make it punchy and shareable
-- No "In summary" or meta phrases`;
-        userPrompt = `Create a TL;DR (one sentence, max 30 words):\n\n${request.text}`;
-      } else if (isFinalSummary) {
-        systemPrompt = `You are an expert synthesis researcher. Your role: merge multiple summaries into ONE coherent narrative revealing the author's core finding, not a collection of repeated points.
-
-CRITICAL RULES (no exceptions):
-- ELIMINATE ALL REPETITION: No point appears twice. Check each bullet against all others.
-- PRIORITIZE: Lead with the main finding/number (the 6%, the 3x threshold, the core insight)
-- ONE HEADING ONLY: Single # title capturing the overall argument, not multiple similar headings
-- QUANTIFY: Include specific numbers, percentages, measurements where available
-- METHODOLOGY FIRST: Explain HOW the finding was discovered before listing implications
-- ACTIONABLE INSIGHTS: End with recommendations/what to do with this knowledge
-- FORMAT: # Main Finding\\n\\nBackground context.\\n\\n**Key insight 1**: Why it matters.\\n**Key insight 2**: Implication.\\n**Key insight 3**: What to do about it.
-- Each point max 15 words, bold only critical metrics
-- Maximum 120 words total`;
-
-        userPrompt = `Synthesize these chunk summaries into one coherent markdown summary revealing the author's core message:\n\n${request.text}`;
-      } else {
-        // Chunk prompt - descriptive extraction for final synthesis
-        systemPrompt = `You are an expert editorial analyst extracting comprehensive insights from content. Your role is to capture what the author is communicating with enough detail that these insights can be synthesized into a coherent full summary.
-
-INSTRUCTIONS:
-- Format: # [Heading capturing main topic]\\n\\n**Key finding**: 1-2 sentences explaining the core claim or discovery\\n\\n**Supporting evidence**: Specific examples, numbers, methodologies, or reasoning\\n\\n**Why it matters**: Implications and significance\\n\\n**Context**: How this relates to broader themes
-- Extract specific numbers, percentages, measurements when available
-- Include the methodology/HOW if explaining a finding
-- Go deeper than surface facts - explain implications and connections
-- Use **bold** for critical metrics and concepts
-- Provide enough context that someone reading only this can understand the significance
-- Maximum 180 words total`;
-        userPrompt = `As an editorial analyst, extract the author's key findings and supporting evidence from this section with enough detail for synthesis:\n\n${request.text}`;
-      }
-
-      /* COMMENTED OUT - keeping only one unified prompt style for clarity
-      // } else if (style === "tldr") {
-      //   systemPrompt = "One sentence summary only. Maximum 12 words. Be direct and factual.";
-      //   userPrompt = `One sentence summary:\n\n${request.text}`;
-      // } else if (style === "paragraph") {
-      //   systemPrompt = "Write 2 sentences maximum. Use markdown for emphasis. Capture the essence only.";
-      //   userPrompt = `2 sentence summary in markdown:\n\n${request.text}`;
-      // } else if (style === "takeaways") {
-      //   systemPrompt = "List 3 key takeaways only. Use markdown bullet points and **bold** for important terms. Keep each under 15 words.";
-      //   userPrompt = `3 main takeaways:\n\n${request.text}`;
-      // } else {
-      //   // bullets (default)
-      //   systemPrompt = "Extract 3-4 key points as markdown bullets. Each bullet max 15 words. Use **bold** for key terms only.";
-      //   userPrompt = `Bullet summary (3-4 points):\n\n${request.text}`;
-      // }
-      */
-
-      const messages = [
-        {
-          role: "system",
-          content: systemPrompt
-        },
-        {
-          role: "user",
-          content: userPrompt
-        }
-      ];
-
-      const asyncGen = await engine.chat.completions.create({
-        model: MODEL_ID,
-        messages: messages,
-        stream: true,
-        temperature: 0.2,
-        top_p: 0.9,
-        max_tokens: 200
-      });
-
-      let summary = "";
-      for await (const chunk of asyncGen) {
-        const token = chunk.choices[0]?.delta?.content || "";
-        if (token) {
-          summary += token;
-          chrome.runtime.sendMessage(
-            {
-              type: "TOKEN",
-              token: token,
-              requestId: request.requestId,
-              chunkIndex: chunkIndex,
-              totalChunks: totalChunks,
-              isFinalSummary: isFinalSummary
-            },
-            () => {}
-          );
+          // If the engine appears corrupted, clear it so model reload path triggers next time
+          if (_isEngineCorrupted(err)) {
+            console.warn("[offscreen] Engine error detected, resetting engine state");
+            engine = null;
+          }
         }
       }
 
-      chrome.runtime.sendMessage(
-        {
-          type: "COMPLETE",
-          summary: summary,
-          requestId: request.requestId,
-          chunkIndex: chunkIndex,
-          totalChunks: totalChunks,
-          isFinalSummary: isFinalSummary
-        },
-        () => {}
-      );
+      if (lastError) {
+        throw lastError; // Will be caught by outer try/catch, which sends ERROR message
+      }
 
       sendResponse({ success: true });
     }

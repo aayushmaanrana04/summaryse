@@ -1,5 +1,6 @@
 // Manifest V3 Service Worker - delegates AI to offscreen document
 
+const REQUEST_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 const pendingRequests = new Map();
 
 async function ensureOffscreenExists() {
@@ -87,6 +88,17 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 });
 
+// Clean up pending requests when tabs are closed
+chrome.tabs.onRemoved.addListener((tabId) => {
+  for (const [requestId, { tabId: storedTabId, timeoutHandle }] of pendingRequests) {
+    if (storedTabId === tabId) {
+      clearTimeout(timeoutHandle);
+      pendingRequests.delete(requestId);
+      console.log(`[background] Cleaned pending request ${requestId} for closed tab ${tabId}`);
+    }
+  }
+});
+
 // Handle messages from content script and offscreen document
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   try {
@@ -102,7 +114,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       const requestId = `${sender.tab.id}-${Date.now()}`;
       console.log(`[background] Received ${request.type} from tab ${sender.tab.id}`);
 
-      pendingRequests.set(requestId, sender.tab.id);
+      // Create timeout to auto-clean this request if it never resolves
+      const timeoutHandle = setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          const { tabId } = pendingRequests.get(requestId);
+          console.warn(`[background] Request ${requestId} timed out after ${REQUEST_TIMEOUT_MS}ms`);
+          pendingRequests.delete(requestId);
+          // Notify the tab so the widget can show an error state
+          chrome.tabs.sendMessage(
+            tabId,
+            { type: "ERROR", error: "Request timed out — inference took too long." },
+            () => { if (chrome.runtime.lastError) {} }
+          );
+        }
+      }, REQUEST_TIMEOUT_MS);
+
+      pendingRequests.set(requestId, { tabId: sender.tab.id, timeoutHandle });
       sendResponse({ success: true });
 
       // Forward to offscreen document
@@ -123,7 +150,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     // Handle messages from offscreen document
     if (request.requestId && pendingRequests.has(request.requestId)) {
-      const tabId = pendingRequests.get(request.requestId);
+      const { tabId, timeoutHandle } = pendingRequests.get(request.requestId);
 
       // Forward to content script
       chrome.tabs.sendMessage(
@@ -138,6 +165,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
       // Clean up after completion or error
       if (request.type === "COMPLETE" || request.type === "ERROR") {
+        clearTimeout(timeoutHandle);
         pendingRequests.delete(request.requestId);
       }
 
