@@ -239,30 +239,44 @@
 
     function handleToken(message) {
         const token = message.token || "";
+        const chunkIndex = message.chunkIndex;
 
         if (message.isFinalSummary) {
             // Use token array builder instead of string concatenation
             currentSummaryTokens.push(token);
-        } else if (message.chunkIndex !== undefined) {
-            // Chunk streaming - use token array builder
-            if (!chunkTokens[message.chunkIndex]) {
-                chunkTokens[message.chunkIndex] = [];
+            if (!updatePending) {
+                updatePending = true;
+                setTimeout(() => {
+                    currentSummary = currentSummaryTokens.join('');
+                    updatePending = false;
+                }, 50);
             }
-            chunkTokens[message.chunkIndex].push(token);
+        } else if (chunkIndex !== undefined) {
+            // Chunk streaming - update individual chunk immediately
+            if (!chunkTokens[chunkIndex]) {
+                chunkTokens[chunkIndex] = [];
+            }
+            chunkTokens[chunkIndex].push(token);
 
             if (!updatePending) {
                 updatePending = true;
                 setTimeout(() => {
-                    // Batch join all tokens
-                    chunkSummaries = chunkTokens.map((tokens, idx) =>
-                        tokens ? tokens.join('') : (chunkSummaries[idx] || '')
-                    );
+                    // Update only the chunk that received tokens
+                    chunkSummaries[chunkIndex] = chunkTokens[chunkIndex]?.join('') || '';
+                    chunkSummaries = chunkSummaries;
                     updatePending = false;
                 }, 50);
             }
         } else {
             // Single text streaming - use token array
             currentSummaryTokens.push(token);
+            if (!updatePending) {
+                updatePending = true;
+                setTimeout(() => {
+                    currentSummary = currentSummaryTokens.join('');
+                    updatePending = false;
+                }, 50);
+            }
         }
     }
 
