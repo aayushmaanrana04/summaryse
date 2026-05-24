@@ -5,10 +5,14 @@ function estimateTokens(text) {
   return Math.ceil(wordCount * 1.4);
 }
 
+let _segmenterCache = null;
+
 function segmentSentences(text) {
   try {
-    const segmenter = new Intl.Segmenter('en', { granularity: 'sentence' });
-    return [...segmenter.segment(text)].map(s => s.segment).filter(s => s.trim().length > 0);
+    if (!_segmenterCache) {
+      _segmenterCache = new Intl.Segmenter('en', { granularity: 'sentence' });
+    }
+    return [..._segmenterCache.segment(text)].map(s => s.segment).filter(s => s.trim().length > 0);
   } catch (_) {
     return (text.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g) || [text]).filter(s => s.trim().length > 0);
   }
@@ -19,8 +23,11 @@ function packSentencesIntoChunks(sentences, maxTokens) {
   let currentParts = [];
   let currentTokens = 0;
 
+  // Cache token counts to avoid recalculating per sentence
+  const sentenceTokenMap = new Map(sentences.map(s => [s, estimateTokens(s)]));
+
   for (const sentence of sentences) {
-    const sentTokens = estimateTokens(sentence);
+    const sentTokens = sentenceTokenMap.get(sentence);
 
     if (sentTokens > maxTokens) {
       if (currentParts.length > 0) {

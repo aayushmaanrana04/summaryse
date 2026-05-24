@@ -1,17 +1,16 @@
 // Offscreen document for AI inference (Manifest V3)
 import * as webllm from '../webllm-npm.js';
+import { MESSAGE_TYPES, RETRY_CONFIG } from '../src/constants.js';
 
 const MODEL_ID = "gemma-2-2b-it-q4f16_1-MLC";
-const MAX_INFERENCE_RETRIES = 3;
-const RETRY_BASE_DELAY_MS = 500;
-const RETRY_MAX_DELAY_MS = 8000;
 
 let engine = null;
 let modelLoading = false;
 let modelLoadPromise = null;
+let _cachedBackend = null;
 
 function _retryDelay(attempt) {
-  const delay = Math.min(RETRY_BASE_DELAY_MS * Math.pow(2, attempt), RETRY_MAX_DELAY_MS);
+  const delay = Math.min(RETRY_CONFIG.BASE_DELAY_MS * Math.pow(2, attempt), RETRY_CONFIG.MAX_DELAY_MS);
   const jitter = delay * 0.1 * Math.random();
   return Math.floor(delay + jitter);
 }
@@ -21,27 +20,22 @@ function _isEngineCorrupted(error) {
   return msg.includes('WebGPU') || msg.includes('device lost') || msg.includes('GPU');
 }
 
-// Detect best cache backend and GPU support
+// Detect best cache backend (cached once per session)
 async function detectOptimalBackend() {
-  const backends = {
-    opfs: false,
-    indexeddb: true,
-    cache: true
-  };
+  if (_cachedBackend !== null) return _cachedBackend;
 
-  // Check OPFS support (fastest, 10x+ improvement)
   try {
     if ('getDirectory' in FileSystemDirectoryHandle.prototype) {
-      backends.opfs = true;
+      _cachedBackend = "opfs";
       console.log("[offscreen] ✅ OPFS supported - using for optimal cache performance");
-      return "opfs";
+      return _cachedBackend;
     }
   } catch (e) {
     console.log("[offscreen] OPFS not supported, falling back to IndexedDB");
   }
 
-  // IndexedDB is supported everywhere else
-  return "indexeddb";
+  _cachedBackend = "indexeddb";
+  return _cachedBackend;
 }
 
 // Detect WebGPU support for graceful fallback
@@ -128,14 +122,14 @@ INSTRUCTIONS:
     max_tokens: 200
   });
 
-  let summary = "";
+  const summaryTokens = [];
   for await (const chunk of asyncGen) {
     const token = chunk.choices[0]?.delta?.content || "";
     if (token) {
-      summary += token;
+      summaryTokens.push(token);
       chrome.runtime.sendMessage(
         {
-          type: "TOKEN",
+          type: MESSAGE_TYPES.TOKEN,
           token: token,
           requestId: request.requestId,
           chunkIndex: chunkIndex,
@@ -149,8 +143,8 @@ INSTRUCTIONS:
 
   chrome.runtime.sendMessage(
     {
-      type: "COMPLETE",
-      summary: summary,
+      type: MESSAGE_TYPES.COMPLETE,
+      summary: summaryTokens.join(''),
       requestId: request.requestId,
       chunkIndex: chunkIndex,
       totalChunks: totalChunks,
@@ -162,14 +156,14 @@ INSTRUCTIONS:
 
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   try {
-    if (request.type === "LOAD_MODEL") {
+    if (request.type === MESSAGE_TYPES.LOAD_MODEL) {
       console.log("[offscreen] Load model request received");
 
       // If model is already loaded, respond immediately
       if (engine) {
         console.log("[offscreen] Model already loaded in memory");
         chrome.runtime.sendMessage(
-          { type: "READY", requestId: request.requestId },
+          { type: MESSAGE_TYPES.READY, requestId: request.requestId },
           () => {}
         );
         sendResponse({ success: true });
@@ -181,7 +175,7 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
         console.log("[offscreen] Model is loading, waiting...");
         await modelLoadPromise;
         chrome.runtime.sendMessage(
-          { type: "READY", requestId: request.requestId },
+          { type: MESSAGE_TYPES.READY, requestId: request.requestId },
           () => {}
         );
         sendResponse({ success: true });
@@ -212,7 +206,7 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 
               chrome.runtime.sendMessage(
                 {
-                  type: "PROGRESS",
+                  type: MESSAGE_TYPES.PROGRESS,
                   text: info.text || "Loading...",
                   percent: percent,
                   requestId: request.requestId
@@ -235,11 +229,11 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 
       console.log("[offscreen] Sending READY signal");
       chrome.runtime.sendMessage(
-        { type: "READY", requestId: request.requestId },
+        { type: MESSAGE_TYPES.READY, requestId: request.requestId },
         () => {}
       );
       sendResponse({ success: true });
-    } else if (request.type === "SUMMARIZE") {
+    } else if (request.type === MESSAGE_TYPES.SUMMARIZE) {
       // If engine is null but model should be loaded, try loading it first
       if (!engine) {
         console.log("[offscreen] Engine null, attempting to load model...");
@@ -272,11 +266,11 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 
       // Inference with retry logic
       let lastError = null;
-      for (let attempt = 0; attempt <= MAX_INFERENCE_RETRIES; attempt++) {
+      for (let attempt = 0; attempt <= RETRY_CONFIG.MAX_ATTEMPTS; attempt++) {
         try {
           if (attempt > 0) {
             const delay = _retryDelay(attempt - 1);
-            console.log(`[offscreen] Retry attempt ${attempt}/${MAX_INFERENCE_RETRIES} after ${delay}ms`);
+            console.log(`[offscreen] Retry attempt ${attempt}/${RETRY_CONFIG.MAX_ATTEMPTS} after ${delay}ms`);
             await new Promise(resolve => setTimeout(resolve, delay));
           }
           await _runInference(request);
@@ -304,7 +298,7 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     console.error("[offscreen] Error:", error);
     chrome.runtime.sendMessage(
       {
-        type: "ERROR",
+        type: MESSAGE_TYPES.ERROR,
         error: error.message,
         requestId: request.requestId
       },

@@ -23,21 +23,6 @@
 
   <div class="spacer"></div>
 
-  <!-- SINGLE PROMPT STYLE - style selector removed (only one summarization format now)
-  <div class="style-selector">
-    {#each styles as style (style.key)}
-      <button
-        class="style-btn"
-        class:active={summaryStyle === style.key}
-        on:click={() => onStyleChange(style.key)}
-        title={`${style.label} format`}
-      >
-        {style.label}
-      </button>
-    {/each}
-  </div>
-  -->
-
   <div class="action-buttons">
     <button
       class="icon-btn copy-btn"

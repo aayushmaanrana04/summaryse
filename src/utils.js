@@ -7,24 +7,32 @@ export function estimateTokens(text) {
   return Math.ceil(wordCount * 1.4);
 }
 
+// Cache segmenter instance (Intl.Segmenter creation is relatively expensive)
+let _segmenterCache = null;
+
 // Segment text into sentences using Intl.Segmenter with regex fallback
-function segmentSentences(text) {
+export function segmentSentences(text) {
   try {
-    const segmenter = new Intl.Segmenter('en', { granularity: 'sentence' });
-    return [...segmenter.segment(text)].map(s => s.segment).filter(s => s.trim().length > 0);
+    if (!_segmenterCache) {
+      _segmenterCache = new Intl.Segmenter('en', { granularity: 'sentence' });
+    }
+    return [..._segmenterCache.segment(text)].map(s => s.segment).filter(s => s.trim().length > 0);
   } catch (_) {
     return (text.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g) || [text]).filter(s => s.trim().length > 0);
   }
 }
 
 // Pack sentences greedily into chunks, with word-level fallback for oversized sentences
-function packSentencesIntoChunks(sentences, maxTokens) {
+export function packSentencesIntoChunks(sentences, maxTokens) {
   const chunks = [];
   let currentParts = [];
   let currentTokens = 0;
 
+  // Cache token counts to avoid recalculating per sentence
+  const sentenceTokenMap = new Map(sentences.map(s => [s, estimateTokens(s)]));
+
   for (const sentence of sentences) {
-    const sentTokens = estimateTokens(sentence);
+    const sentTokens = sentenceTokenMap.get(sentence);
 
     if (sentTokens > maxTokens) {
       // Sentence alone exceeds limit: flush current chunk, then word-split this sentence
