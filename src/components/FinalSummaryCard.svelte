@@ -2,7 +2,6 @@
   import MarkdownContent from './MarkdownContent.svelte';
 
   export let currentSummary = '';
-  export let modalOpen = false;
   export let isBubble = false;
   export let isExpandedFinal = false;
   export let onCopy = () => {};
