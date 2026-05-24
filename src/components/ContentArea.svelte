@@ -1,8 +1,9 @@
 <script>
-  // Simple scrollable content wrapper
+  export let isBubbleMode = false;
+  export let isFinalOnly = false;
 </script>
 
-<div class="content-area">
+<div class="content-area" class:bubble-mode={isBubbleMode} class:final-only={isFinalOnly}>
   <slot />
 </div>
 
@@ -16,6 +17,18 @@
     max-height: calc(100vh - 80px);
     scrollbar-width: thin;
     scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  }
+
+  .content-area.bubble-mode {
+    align-items: flex-end;
+    justify-content: flex-start;
+    gap: 8px;
+    padding-right: 0;
+  }
+
+  .content-area.final-only {
+    align-items: center;
+    justify-content: center;
   }
 
   .content-area::-webkit-scrollbar {

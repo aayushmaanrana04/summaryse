@@ -34,6 +34,8 @@
     let loadingProgress = 0;
     let errorMessage = "";
     let slidingOut = false;
+    let chunksCollapsed = false;
+    let updatePending = false;
 
     onMount(() => {
         chrome.runtime.onMessage.addListener(handleBackgroundMessage);
@@ -154,6 +156,11 @@
 
         slidingOut = true;
 
+        // Remove chunks from DOM after collapse animation (400ms)
+        setTimeout(() => {
+            chunksCollapsed = true;
+        }, 420);
+
         setTimeout(() => {
             finalized = true;
             chrome.runtime.sendMessage({
@@ -201,9 +208,16 @@
             // Accumulate but don't render until COMPLETE
             currentSummary += token;
         } else if (message.chunkIndex !== undefined) {
-            // Chunk streaming - mutate in place, then signal change without copying
+            // Chunk streaming - batch updates
             chunkSummaries[message.chunkIndex] += token;
-            chunkSummaries = chunkSummaries;
+
+            if (!updatePending) {
+                updatePending = true;
+                requestAnimationFrame(() => {
+                    chunkSummaries = chunkSummaries;
+                    updatePending = false;
+                });
+            }
         } else {
             // Single text streaming
             currentSummary += token;
@@ -255,6 +269,7 @@
         currentChunkIndex = 0;
         finalized = false;
         slidingOut = false;
+        chunksCollapsed = false;
         startSummarization();
     }
 
@@ -279,66 +294,42 @@
 </script>
 
 <div class="summaryse-widget">
-    <Header
-        {summaryStyle}
-        onStyleChange={(style) => (summaryStyle = style)}
-        onCopy={copy}
-        onReset={reset}
-        onClose={closeWidget}
-        canCopy={phase === PHASES.COMPLETE && currentSummary}
-        {chunks}
-        {currentChunkIndex}
-        {phase}
-        isLargeText={isLargeTextFlag}
-    />
 
-    <ContentArea>
+    <ContentArea
+        isBubbleMode={phase === PHASES.STREAMING || phase === PHASES.SUMMARIZING}
+        isFinalOnly={phase === PHASES.COMPLETE}
+    >
         {#if phase === PHASES.INIT || phase === PHASES.LOADING_MODEL}
             <LoadingState {loadingProgress} isFirstUse={!modelLoaded} />
         {:else if phase === PHASES.SUMMARIZING || phase === PHASES.STREAMING}
-            {#if isLargeTextFlag}
+            {#if isLargeTextFlag && !chunksCollapsed}
                 {#each chunks as chunk, i (i)}
-                    {#if chunkSummaries[i] === "" && !slidingOut}
-                        <SkeletonCard key={`skeleton-${i}`} />
-                    {/if}
-                    {#if chunkSummaries[i] !== ""}
-                        <ChunkCard
-                            summary={chunkSummaries[i]}
-                            isStreaming={i === currentChunkIndex &&
-                                phase === PHASES.STREAMING}
-                            index={i}
-                            class={slidingOut ? "slide-out-left" : ""}
-                        />
-                    {/if}
+                    <ChunkCard
+                        summary={chunkSummaries[i]}
+                        isStreaming={i === currentChunkIndex &&
+                            phase === PHASES.STREAMING}
+                        index={i}
+                        isBubble={true}
+                        compactExpanded={true}
+                        isCollapsing={slidingOut}
+                    />
                 {/each}
 
                 {#if slidingOut && currentChunkIndex >= chunks.length}
-                    <SynthesizingCard />
+                    <FinalSummaryCard currentSummary={currentSummary} isBubble={true} bind:modalOpen />
                 {/if}
             {:else}
                 <ChunkCard
                     summary={currentSummary}
                     isStreaming={phase === PHASES.STREAMING}
                     index={0}
+                    isBubble={true}
+                    compactExpanded={false}
+                    isCollapsing={false}
                 />
             {/if}
         {:else if phase === PHASES.COMPLETE}
-            {#if isLargeTextFlag && !slidingOut}
-                {#each chunks as chunk, i (i)}
-                    <ChunkCard
-                        summary={chunkSummaries[i]}
-                        isStreaming={false}
-                        index={i}
-                        class="slide-in-right"
-                    />
-                {/each}
-            {/if}
-
-            <FinalSummaryCard {currentSummary} bind:modalOpen />
-
-            {#if stats}
-                <StatsCard {stats} />
-            {/if}
+            <FinalSummaryCard {currentSummary} isExpandedFinal={true} bind:modalOpen />
         {:else if phase === PHASES.ERROR}
             <ErrorCard {errorMessage} onRetry={reset} />
         {/if}
@@ -382,6 +373,8 @@
         width: 650px;
         box-sizing: border-box;
         flex-shrink: 0;
+        contain: layout style paint;
+        backface-visibility: hidden;
     }
 
     @keyframes cardRise {

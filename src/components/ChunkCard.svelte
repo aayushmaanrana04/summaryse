@@ -1,16 +1,38 @@
 <script>
+  import { onMount } from 'svelte';
   import MarkdownContent from './MarkdownContent.svelte';
 
   export let summary = '';
   export let isStreaming = false;
   export let index = 0;
+  export let isBubble = false;
+  export let compactExpanded = false;
+  export let isCollapsing = false;
   let className = '';
   export { className as class };
+
+  let canExpand = false;
+
+  $: hasContent = summary !== '';
+
+  $: if (hasContent && isBubble && !canExpand) {
+    // Defer expansion to next frame to avoid animation lag
+    requestAnimationFrame(() => {
+      canExpand = true;
+    });
+  }
+
+  $: shouldExpand = canExpand && isBubble;
 </script>
 
-<div class="summaryse-base-card chunk-card {className}">
+<div class="summaryse-base-card chunk-card {className}" class:bubble={isBubble} class:expanded={shouldExpand} class:compact={compactExpanded && shouldExpand} class:collapsing={isCollapsing}>
   <div class="card-content">
-    {#if summary === ''}
+    {#if isBubble && !hasContent}
+      <!-- Bubble mode with spinner -->
+      <div class="spinner-container">
+        <div class="spinner"></div>
+      </div>
+    {:else if summary === ''}
       <!-- Empty state -->
       <p class="empty-text">Summarizing chunk {index + 1}...</p>
     {:else}
@@ -26,6 +48,107 @@
 <style>
   .chunk-card {
     contain: layout style paint;
+    will-change: auto;
+  }
+
+  /* Bubble mode - small circular initial state */
+  .chunk-card.bubble {
+    width: 40px !important;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0;
+    background: rgba(225, 237, 247, 0.95);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+    transition: none;
+    will-change: width, border-radius;
+  }
+
+  /* Expanded bubble with GPU-optimized animation */
+  .chunk-card.bubble.expanded {
+    width: 650px !important;
+    height: auto;
+    border-radius: 32px;
+    padding: 20px;
+    animation: bubbleExpandGPU 600ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    will-change: transform, opacity, border-radius;
+  }
+
+  @keyframes bubbleExpandGPU {
+    0% {
+      transform: scale(0.06);
+      border-radius: 50%;
+      opacity: 0.8;
+    }
+    50% {
+      border-radius: 24px;
+    }
+    100% {
+      transform: scale(1);
+      border-radius: 32px;
+      opacity: 1;
+    }
+  }
+
+  /* Collapse animation when merging */
+  .chunk-card.bubble.collapsing {
+    animation: bubbleCollapse 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    will-change: transform, opacity;
+  }
+
+  @keyframes bubbleCollapse {
+    0% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(0.5);
+    }
+  }
+
+  /* Compact expanded styling for chunks state */
+  .chunk-card.bubble.expanded.compact {
+    padding: 16px;
+  }
+
+  .chunk-card.bubble.expanded.compact :global(.card-content) {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .chunk-card.bubble.expanded.compact :global(h1) {
+    font-size: 14px;
+    margin: 8px 0 4px 0;
+  }
+
+  .chunk-card.bubble.expanded.compact :global(h2) {
+    font-size: 13px;
+    margin: 6px 0 3px 0;
+  }
+
+  .chunk-card.bubble.expanded.compact :global(h3) {
+    font-size: 12px;
+    margin: 4px 0 2px 0;
+  }
+
+  .chunk-card.bubble.expanded.compact :global(p) {
+    margin: 4px 0;
+  }
+
+  .chunk-card.bubble.expanded.compact :global(ul),
+  .chunk-card.bubble.expanded.compact :global(ol) {
+    margin: 4px 0;
+    padding-left: 16px;
+  }
+
+  .chunk-card.bubble.expanded.compact :global(li) {
+    margin: 2px 0;
   }
 
   .chunk-card.slide-out-left {
@@ -61,6 +184,30 @@
     display: flex;
     flex-direction: column;
     gap: 0;
+    width: 100%;
+  }
+
+  .spinner-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+  }
+
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(30, 41, 59, 0.1);
+    border-top-color: var(--color-primary, #1E293B);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .empty-text {
@@ -70,7 +217,6 @@
     font-style: italic;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
-
 
   .cursor {
     display: inline-block;
