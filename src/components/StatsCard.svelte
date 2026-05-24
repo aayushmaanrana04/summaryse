@@ -3,7 +3,7 @@
 </script>
 
 {#if stats}
-  <div class="stats-card">
+  <div class="summaryse-base-card stats-card">
     <div class="stats-grid">
       <div class="stat-item">
         <p class="stat-label">Original</p>
@@ -28,44 +28,6 @@
 
 <style>
   .stats-card {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    padding: 16px;
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(8px);
-    border-radius: 8px;
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    position: relative;
-    animation: cardRise 400ms cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .stats-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(
-      90deg,
-      var(--color-primary, #1E293B) 0%,
-      var(--color-primary-200, #475569) 50%,
-      transparent 100%
-    );
-    border-radius: 8px 8px 0 0;
-    opacity: 0.6;
-  }
-
-  @keyframes cardRise {
-    from {
-      opacity: 0;
-      transform: translateY(12px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
   }
 
   .stats-grid {
@@ -92,7 +54,7 @@
   .stat-label {
     font-size: 12px;
     font-weight: 500;
-    color: rgba(30, 41, 59, 0.7);
+    color: #999999;
     margin: 0;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -102,14 +64,14 @@
   .stat-value {
     font-size: 20px;
     font-weight: 700;
-    color: var(--color-primary, #1E293B);
+    color: #000000;
     margin: 4px 0 2px;
     font-family: 'Space Grotesk', sans-serif;
   }
 
   .stat-unit {
     font-size: 12px;
-    color: rgba(30, 41, 59, 0.6);
+    color: #999999;
     margin: 0;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }

@@ -2,7 +2,7 @@
   // Combining chunks indicator
 </script>
 
-<div class="synthesizing-card">
+<div class="summaryse-base-card synthesizing-card">
   <div class="synthesizing-content">
     <div class="dots-loader">
       <span class="dot dot-1"></span>
@@ -15,44 +15,6 @@
 
 <style>
   .synthesizing-card {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    padding: 20px;
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(8px);
-    border-radius: 8px;
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    position: relative;
-    animation: cardRise 400ms cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .synthesizing-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(
-      90deg,
-      var(--color-primary, #1E293B) 0%,
-      var(--color-primary-200, #475569) 50%,
-      transparent 100%
-    );
-    border-radius: 8px 8px 0 0;
-    opacity: 0.6;
-  }
-
-  @keyframes cardRise {
-    from {
-      opacity: 0;
-      transform: translateY(12px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
   }
 
   .synthesizing-content {
@@ -72,7 +34,7 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--color-primary, #1E293B);
+    background: #000000;
     animation: bounce 1.4s infinite;
   }
 
@@ -98,7 +60,7 @@
   }
 
   .status-text {
-    color: rgba(30, 41, 59, 0.8);
+    color: #000000;
     font-size: 13px;
     margin: 0;
     font-weight: 500;

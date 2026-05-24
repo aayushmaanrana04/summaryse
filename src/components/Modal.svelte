@@ -77,10 +77,10 @@
     width: 90%;
     max-width: 600px;
     max-height: 80vh;
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(225, 237, 247, 0.98);
     backdrop-filter: blur(8px);
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(148, 163, 184, 0.4);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     animation: slideUp 300ms cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
@@ -108,7 +108,7 @@
   .modal-title {
     font-size: 20px;
     font-weight: 600;
-    color: var(--color-primary, #1E293B);
+    color: #000000;
     margin: 0;
     font-family: 'Space Grotesk', sans-serif;
   }
@@ -118,7 +118,7 @@
     height: 36px;
     border: none;
     background: transparent;
-    color: var(--color-primary, #1E293B);
+    color: #000000;
     font-size: 16px;
     cursor: pointer;
     border-radius: 6px;
@@ -168,7 +168,7 @@
     flex: 1;
     padding: 12px 16px;
     border: none;
-    background: var(--color-primary, #1E293B);
+    background: #000000;
     color: white;
     font-size: 14px;
     font-weight: 600;
@@ -179,7 +179,7 @@
   }
 
   .copy-btn:hover {
-    background: rgba(30, 41, 59, 0.9);
+    background: #333333;
     transform: translateY(-2px);
   }
 

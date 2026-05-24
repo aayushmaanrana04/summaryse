@@ -58,48 +58,58 @@ export function getChunkEstimate(text, maxTokensPerChunk = 1500) {
   return Math.ceil(totalTokens / maxTokensPerChunk);
 }
 
-// Parse markdown and convert to safe HTML
+// Parse markdown and convert to safe HTML - strict mode
 export function parseMarkdown(markdown) {
   if (!markdown) return '';
 
   let html = markdown;
 
-  // Headings (h1-h3)
+  // Headings (h1-h3) - only at line start
   html = html.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
   html = html.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
   html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
 
+  // Bold - must be before italic (strict: no whitespace inside)
+  html = html.replace(/\*\*([^\s].*?[^\s])\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*\*([^\s])\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/__([\S].*?[\S])__/g, '<strong>$1</strong>');
+
+  // Italic - only with non-whitespace content
+  html = html.replace(/\*([^\s\*].*?[^\s\*])\*/g, '<em>$1</em>');
+  html = html.replace(/\*([^\s\*])\*/g, '<em>$1</em>');
+  html = html.replace(/_([^\s_].*?[^\s_])_/g, '<em>$1</em>');
+  html = html.replace(/_([^\s_])_/g, '<em>$1</em>');
+
+  // Inline code (backticks) - strict
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // Links [text](url) - validate URL format
+  html = html.replace(/\[([^\]]+)\]\(([^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
   // Lists - convert markdown lists to HTML
-  // Unordered lists
-  html = html.replace(/^\* (.*?)$/gm, '<li>$1</li>');
-  html = html.replace(/^\- (.*?)$/gm, '<li>$1</li>');
-  html = html.replace(/^(\<li\>.*?\<\/li\>[\n\r]*)+/gm, (match) => `<ul>${match}</ul>`);
+  // Process bullet lists
+  const listItems = html.match(/^[\s]*[-•*+]\s+(.+)$/gm) || [];
+  if (listItems.length > 0) {
+    let listHtml = '<ul>';
+    listItems.forEach(item => {
+      const text = item.replace(/^[\s]*[-•*+]\s+/, '').trim();
+      listHtml += `<li>${text}</li>`;
+    });
+    listHtml += '</ul>';
+    html = html.replace(/(?:^[\s]*[-•*+]\s+.+\n?)+/gm, listHtml);
+  }
 
   // Blockquotes
   html = html.replace(/^> (.*?)$/gm, '<blockquote>$1</blockquote>');
 
-  // Links [text](url)
-  html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-
-  // Inline code (backticks)
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-  // Bold - must be before italic
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/__(.*?)__/g, '<strong>$1</strong>');
-
-  // Italic
-  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  html = html.replace(/_(.*?)_/g, '<em>$1</em>');
-
-  // Paragraph breaks - preserve double newlines
+  // Paragraph breaks - only for double newlines
   const paragraphs = html.split(/\n\n+/);
   html = paragraphs
     .map(p => p.trim())
     .filter(p => p.length > 0)
     .map(p => {
       // Skip if already wrapped in tags
-      if (p.match(/^<[h|u|b|l|b]/)) return p;
+      if (p.match(/^<[h|u|b|l|blockquote|code]/)) return p;
       return `<p>${p}</p>`;
     })
     .join('');

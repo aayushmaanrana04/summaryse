@@ -3,7 +3,7 @@
   export let onRetry = () => {};
 </script>
 
-<div class="error-card">
+<div class="summaryse-base-card error-card">
   <div class="error-content">
     <div class="error-icon">⚠️</div>
     <p class="error-title">Oops, something went wrong</p>
@@ -15,44 +15,6 @@
 
 <style>
   .error-card {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    padding: 20px;
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(8px);
-    border-radius: 8px;
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    position: relative;
-    animation: cardRise 400ms cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .error-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(
-      90deg,
-      rgba(239, 68, 68, 0.8) 0%,
-      rgba(239, 68, 68, 0.5) 50%,
-      transparent 100%
-    );
-    border-radius: 8px 8px 0 0;
-    opacity: 0.6;
-  }
-
-  @keyframes cardRise {
-    from {
-      opacity: 0;
-      transform: translateY(12px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
   }
 
   .error-content {
@@ -70,14 +32,14 @@
   .error-title {
     font-size: 16px;
     font-weight: 600;
-    color: var(--color-primary, #1E293B);
+    color: #000000;
     margin: 0;
     font-family: 'Space Grotesk', sans-serif;
   }
 
   .error-message {
     font-size: 13px;
-    color: rgba(30, 41, 59, 0.7);
+    color: #666666;
     margin: 0;
     line-height: 1.4;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -87,7 +49,7 @@
     margin-top: 8px;
     padding: 10px 20px;
     border: none;
-    background: var(--color-primary, #1E293B);
+    background: #000000;
     color: white;
     font-size: 13px;
     font-weight: 600;
@@ -98,7 +60,7 @@
   }
 
   .retry-btn:hover {
-    background: rgba(30, 41, 59, 0.9);
+    background: #333333;
     transform: translateY(-2px);
   }
 

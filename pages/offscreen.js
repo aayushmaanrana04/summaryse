@@ -119,21 +119,21 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 
       // Adjust prompts for final summary refinement
       if (isFinalSummary) {
-        systemPrompt = "You are an expert at synthesizing summaries. Combine these chunk summaries into a single, coherent summary using markdown format. Eliminate redundancy and create a natural flow. Use markdown formatting (bold for key terms, bullet points for items, etc).";
-        userPrompt = `Synthesize these chunk summaries into one cohesive summary in markdown format:\n\n${request.text}`;
+        systemPrompt = "Combine chunk summaries into one coherent summary using markdown. Use **bold** for key terms and bullets for lists. Maximum 100 words.";
+        userPrompt = `Synthesize into markdown summary (max 100 words):\n\n${request.text}`;
       } else if (style === "tldr") {
-        systemPrompt = "You are a concise summarization expert. Provide a one-sentence summary that captures the core idea. Be direct and factual. Maximum 15 words.";
-        userPrompt = `In one sentence, what is the main idea of this text?\n\nText:\n${request.text}`;
+        systemPrompt = "One sentence summary only. Maximum 12 words. Be direct and factual.";
+        userPrompt = `One sentence summary:\n\n${request.text}`;
       } else if (style === "paragraph") {
-        systemPrompt = "You are a skilled summarizer. Write a 2-3 sentence paragraph that captures the essence of the text. Use markdown formatting for emphasis. Be clear and natural.";
-        userPrompt = `Write a 2-3 sentence summary of this text in markdown format:\n\nText:\n${request.text}`;
+        systemPrompt = "Write 2 sentences maximum. Use markdown for emphasis. Capture the essence only.";
+        userPrompt = `2 sentence summary in markdown:\n\n${request.text}`;
       } else if (style === "takeaways") {
-        systemPrompt = "You are a summarization expert. List 3-4 key takeaways with brief explanations in markdown format. Use bullet points for items and bold for important terms. Be specific and actionable.";
-        userPrompt = `What are the 3-4 most important takeaways from this text? Format as a markdown list:\n\nText:\n${request.text}`;
+        systemPrompt = "List 3 key takeaways only. Use markdown bullet points and **bold** for important terms. Keep each under 15 words.";
+        userPrompt = `3 main takeaways:\n\n${request.text}`;
       } else {
         // bullets (default)
-        systemPrompt = "You are a concise summarization expert. Extract key information and present as a markdown-formatted list with bullet points. Each bullet should be clear, factual, and under 20 words. No fluff or explanations. Use **bold** for key terms.";
-        userPrompt = `Summarize the key points from this text as markdown bullet points. Include 3-5 main ideas:\n\nText:\n${request.text}`;
+        systemPrompt = "Extract 3-4 key points as markdown bullets. Each bullet max 15 words. Use **bold** for key terms only.";
+        userPrompt = `Bullet summary (3-4 points):\n\n${request.text}`;
       }
 
       const messages = [
@@ -151,9 +151,9 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
         model: MODEL_ID,
         messages: messages,
         stream: true,
-        temperature: 0.3,
-        top_p: 0.95,
-        max_tokens: 400
+        temperature: 0.2,
+        top_p: 0.9,
+        max_tokens: 200
       });
 
       let summary = "";
