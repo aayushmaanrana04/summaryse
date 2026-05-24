@@ -59,6 +59,23 @@ try {
   process.exit(1);
 }
 
+// Build markdown worker
+try {
+  await esbuild.build({
+    entryPoints: ['src/markdown-worker.js'],
+    bundle: true,
+    outfile: path.join(dist, 'markdown-worker-bundle.js'),
+    format: 'iife',
+    platform: 'browser',
+    target: 'chrome100',
+    logLevel: 'info',
+  });
+  console.log('✅ Markdown worker build complete!');
+} catch (error) {
+  console.error('Markdown worker build failed:', error.message);
+  process.exit(1);
+}
+
 // Copy manifest.json to dist
 fs.copyFileSync('manifest.json', path.join(dist, 'manifest.json'));
 

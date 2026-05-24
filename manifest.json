@@ -29,5 +29,11 @@
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["markdown-worker-bundle.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

@@ -87,15 +87,17 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 });
 
-// Handle messages from content script
+// Handle messages from content script and offscreen document
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   try {
+    // Handle PING immediately
     if (request.type === "PING") {
       console.log("[background] Received PING, service worker is awake");
       sendResponse({ success: true, message: "pong" });
       return true;
     }
 
+    // Handle load model and summarize requests
     if (request.type === "LOAD_MODEL" || request.type === "SUMMARIZE") {
       const requestId = `${sender.tab.id}-${Date.now()}`;
       console.log(`[background] Received ${request.type} from tab ${sender.tab.id}`);
@@ -118,35 +120,37 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
       return true;
     }
+
+    // Handle messages from offscreen document
+    if (request.requestId && pendingRequests.has(request.requestId)) {
+      const tabId = pendingRequests.get(request.requestId);
+
+      // Forward to content script
+      chrome.tabs.sendMessage(
+        tabId,
+        request,
+        () => {
+          if (chrome.runtime.lastError) {
+            console.log("[background] Tab not available for response:", chrome.runtime.lastError);
+          }
+        }
+      );
+
+      // Clean up after completion or error
+      if (request.type === "COMPLETE" || request.type === "ERROR") {
+        pendingRequests.delete(request.requestId);
+      }
+
+      sendResponse({ success: true });
+      return true;
+    }
   } catch (error) {
     console.error("[background] Message handler error:", error);
     sendResponse({ success: false, error: error.message });
+    return true;
   }
 
   return true;
-});
-
-// Handle messages from offscreen document
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.requestId && pendingRequests.has(request.requestId)) {
-    const tabId = pendingRequests.get(request.requestId);
-
-    // Forward to content script
-    chrome.tabs.sendMessage(
-      tabId,
-      request,
-      () => {
-        if (chrome.runtime.lastError) {
-          console.log("[background] Tab not available for response:", chrome.runtime.lastError);
-        }
-      }
-    );
-
-    // Clean up after completion or error
-    if (request.type === "COMPLETE" || request.type === "ERROR") {
-      pendingRequests.delete(request.requestId);
-    }
-  }
 });
 
 console.log("Summaryse background service worker loaded");

@@ -4,7 +4,40 @@
   export let content = '';
   export let inline = false;
 
-  $: html = parseMarkdown(content);
+  let html = '';
+  let workerReady = false;
+  let markdownWorker = null;
+  let requestId = 0;
+
+  // Try to use worker, fall back to main thread
+  const initWorker = () => {
+    try {
+      markdownWorker = new Worker(chrome.runtime.getURL('markdown-worker-bundle.js'));
+      markdownWorker.onmessage = (e) => {
+        const { id, html: parsedHtml } = e.data;
+        if (id === requestId) {
+          html = parsedHtml;
+        }
+      };
+      workerReady = true;
+    } catch (e) {
+      console.warn('Markdown worker not available, using main thread');
+      workerReady = false;
+    }
+  };
+
+  initWorker();
+
+  $: if (content) {
+    if (workerReady && markdownWorker) {
+      // Use worker for parsing
+      requestId++;
+      markdownWorker.postMessage({ id: requestId, markdown: content });
+    } else {
+      // Fall back to main thread parsing
+      html = parseMarkdown(content);
+    }
+  }
 </script>
 
 {#if inline}

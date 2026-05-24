@@ -36,18 +36,30 @@
     let slidingOut = false;
     let chunksCollapsed = false;
     let updatePending = false;
+    let markdownWorker = null;
+    let parseRequestId = 0;
 
     onMount(() => {
         chrome.runtime.onMessage.addListener(handleBackgroundMessage);
+
+        // Initialize markdown worker
+        try {
+            markdownWorker = new Worker(chrome.runtime.getURL('markdown-worker-bundle.js'));
+        } catch (e) {
+            console.warn('[summaryse-widget] Worker initialization failed, falling back to main thread');
+        }
+
         initialize();
 
         return () => {
             chrome.runtime.onMessage.removeListener(handleBackgroundMessage);
+            if (markdownWorker) markdownWorker.terminate();
         };
     });
 
     onDestroy(() => {
         document.body.classList.remove("summaryse-backdrop-added");
+        if (markdownWorker) markdownWorker.terminate();
     });
 
     async function initialize() {
@@ -208,15 +220,15 @@
             // Accumulate but don't render until COMPLETE
             currentSummary += token;
         } else if (message.chunkIndex !== undefined) {
-            // Chunk streaming - batch updates
+            // Chunk streaming - batch updates with 50ms window
             chunkSummaries[message.chunkIndex] += token;
 
             if (!updatePending) {
                 updatePending = true;
-                requestAnimationFrame(() => {
+                setTimeout(() => {
                     chunkSummaries = chunkSummaries;
                     updatePending = false;
-                });
+                }, 50);
             }
         } else {
             // Single text streaming

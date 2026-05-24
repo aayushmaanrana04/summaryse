@@ -74,21 +74,27 @@
     height: auto;
     border-radius: 32px;
     padding: 20px;
-    animation: bubbleExpandGPU 600ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    will-change: transform, opacity, border-radius;
+    animation: bubbleExpandLeft 600ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    will-change: width, border-radius, opacity;
+    transform-origin: right center;
   }
 
-  @keyframes bubbleExpandGPU {
+  @keyframes bubbleExpandLeft {
     0% {
-      transform: scale(0.06);
-      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      border-radius: 20px;
       opacity: 0.8;
     }
     50% {
-      border-radius: 24px;
+      width: 680px;
+      height: 40px;
+      border-radius: 20px;
+      opacity: 1;
     }
     100% {
-      transform: scale(1);
+      width: 650px;
+      height: auto;
       border-radius: 32px;
       opacity: 1;
     }
