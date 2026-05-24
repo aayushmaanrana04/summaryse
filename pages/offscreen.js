@@ -1,8 +1,23 @@
 // Offscreen document for AI inference (Manifest V3)
 import * as webllm from '../webllm-npm.js';
-import { MESSAGE_TYPES, RETRY_CONFIG } from '../src/constants.js';
 
 const MODEL_ID = "gemma-2-2b-it-q4f16_1-MLC";
+
+const MESSAGE_TYPES = {
+  LOAD_MODEL: 'LOAD_MODEL',
+  SUMMARIZE: 'SUMMARIZE',
+  PROGRESS: 'PROGRESS',
+  TOKEN: 'TOKEN',
+  COMPLETE: 'COMPLETE',
+  ERROR: 'ERROR',
+  READY: 'READY'
+};
+
+const RETRY_CONFIG = {
+  MAX_ATTEMPTS: 3,
+  BASE_DELAY_MS: 500,
+  MAX_DELAY_MS: 8000
+};
 
 let engine = null;
 let modelLoading = false;
