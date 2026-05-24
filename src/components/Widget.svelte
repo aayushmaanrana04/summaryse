@@ -5,6 +5,7 @@
         splitIntoChunks,
         isLargeText,
         isShortText,
+        normalizeText,
         PHASES,
     } from "../utils.js";
 
@@ -21,34 +22,32 @@
 
     export let text = "";
 
-    // Module-level session cache: persists across widget mounts, cleared on page unload
-    const MAX_SUMMARY_CACHE = 10;
-    const _summaryCache = new Map();
-
-    function _cacheKey(textContent, style) {
-        // djb2-based fingerprint for cache key
-        const sample = textContent.length > 500
-            ? textContent.slice(0, 250) + textContent.slice(-250)
-            : textContent;
-        const raw = sample + '|' + textContent.length + '|' + style;
-        let hash = 5381;
-        for (let i = 0; i < raw.length; i++) {
-            hash = ((hash << 5) + hash) ^ raw.charCodeAt(i);
-            hash = hash >>> 0;
-        }
-        return hash.toString(36);
+    // URL-based cache using chrome.storage.local
+    function _getPageUrl() {
+        const url = new URL(window.location.href);
+        url.search = ''; // Remove query params
+        url.hash = ''; // Remove fragments
+        return url.toString();
     }
 
-    function _getCached(textContent, style) {
-        return _summaryCache.get(_cacheKey(textContent, style)) || null;
+    function _getCacheKey(style) {
+        return `summaryse_cache_${_getPageUrl()}_${style}`;
     }
 
-    function _setCached(textContent, style, result) {
-        const key = _cacheKey(textContent, style);
-        if (_summaryCache.size >= MAX_SUMMARY_CACHE) {
-            _summaryCache.delete(_summaryCache.keys().next().value);
-        }
-        _summaryCache.set(key, result);
+    async function _getCached(style) {
+        return new Promise((resolve) => {
+            const key = _getCacheKey(style);
+            chrome.storage.local.get([key], (result) => {
+                resolve(result[key] || null);
+            });
+        });
+    }
+
+    async function _setCached(style, result) {
+        const key = _getCacheKey(style);
+        return new Promise((resolve) => {
+            chrome.storage.local.set({ [key]: result }, resolve);
+        });
     }
 
     // State
@@ -85,6 +84,11 @@
         document.body.classList.remove("summaryse-backdrop-added");
     });
 
+    // Normalize input text on mount
+    $: if (text) {
+        text = normalizeText(text);
+    }
+
     async function initialize() {
         console.log("[summaryse-widget] Initializing");
 
@@ -105,7 +109,7 @@
             await wakeUpServiceWorker();
 
             if (modelLoaded) {
-                startSummarization();
+                await startSummarization();
             } else {
                 // First use - load model
                 phase = PHASES.LOADING_MODEL;
@@ -134,13 +138,13 @@
         });
     }
 
-    function startSummarization() {
+    async function startSummarization() {
         console.log("[summaryse-widget] Starting summarization");
 
         // Check cache first
-        const cached = _getCached(text, summaryStyle);
+        const cached = await _getCached(summaryStyle);
         if (cached) {
-            console.log("[summaryse-widget] Cache hit — serving from session cache");
+            console.log("[summaryse-widget] Cache hit — serving from persistent cache");
             currentSummary = cached.currentSummary;
             isLargeTextFlag = cached.isLargeTextFlag;
             phase = PHASES.COMPLETE;
@@ -308,7 +312,7 @@
             currentSummaryTokens = [];
             finalized = true;
             phase = PHASES.COMPLETE;
-            _setCached(text, summaryStyle, { currentSummary, isLargeTextFlag });
+            _setCached(summaryStyle, { currentSummary, isLargeTextFlag });
             console.log("[summaryse-widget] Summarization complete");
         } else if (message.chunkIndex !== undefined) {
             // Chunk complete - join tokens and finalize
@@ -327,7 +331,7 @@
             currentSummary = message.summary || currentSummaryTokens.join('');
             currentSummaryTokens = [];
             phase = PHASES.COMPLETE;
-            _setCached(text, summaryStyle, { currentSummary, isLargeTextFlag });
+            _setCached(summaryStyle, { currentSummary, isLargeTextFlag });
             console.log("[summaryse-widget] Summarization complete");
         }
     }
@@ -344,9 +348,10 @@
         }
     }
 
-    function reset() {
-        // Invalidate cache for this text so retry gets a fresh inference
-        _summaryCache.delete(_cacheKey(text, summaryStyle));
+    async function reset() {
+        // Invalidate cache for this URL/style so retry gets a fresh inference
+        const key = _getCacheKey(summaryStyle);
+        chrome.storage.local.remove([key]);
 
         phase = PHASES.INIT;
         currentSummary = "";
@@ -357,7 +362,7 @@
         finalized = false;
         slidingOut = false;
         chunksCollapsed = false;
-        startSummarization();
+        await startSummarization();
     }
 
     function closeWidget() {

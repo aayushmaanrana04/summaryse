@@ -1,6 +1,19 @@
 // Utilities for large text handling and chunking
 // ES module version for Svelte components
 
+// Normalize input text before LLM processing
+export function normalizeText(text) {
+  if (!text) return '';
+
+  return text
+    // Collapse multiple spaces into one
+    .replace(/  +/g, ' ')
+    // Normalize line breaks (multiple newlines → double newline for paragraphs)
+    .replace(/\n\n+/g, '\n\n')
+    // Remove leading/trailing whitespace
+    .trim();
+}
+
 // Word-based token estimation (~1.4 tokens per word for English text)
 export function estimateTokens(text) {
   const wordCount = text.trim().split(/\s+/).filter(w => w.length > 0).length;

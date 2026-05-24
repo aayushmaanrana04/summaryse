@@ -103,18 +103,33 @@ CRITICAL RULES (no exceptions):
 
     userPrompt = `Synthesize these chunk summaries into one coherent markdown summary revealing the author's core message:\n\n${request.text}`;
   } else {
-    // Chunk prompt - descriptive extraction for final synthesis
-    systemPrompt = `You are an expert editorial analyst extracting comprehensive insights from content. Your role is to capture what the author is communicating with enough detail that these insights can be synthesized into a coherent full summary.
+    // Chunk prompt - detailed extraction preserving structure and specificity
+    systemPrompt = `You are an expert content analyst extracting comprehensive details from content. Your role is to preserve concrete information, terminology, lists, and relationships so that these details can be synthesized into a full summary.
 
-INSTRUCTIONS:
-- Format: # [Heading capturing main topic]\\n\\n**Key finding**: 1-2 sentences explaining the core claim or discovery\\n\\n**Supporting evidence**: Specific examples, numbers, methodologies, or reasoning\\n\\n**Why it matters**: Implications and significance\\n\\n**Context**: How this relates to broader themes
-- Extract specific numbers, percentages, measurements when available
-- Include the methodology/HOW if explaining a finding
-- Go deeper than surface facts - explain implications and connections
-- Use **bold** for critical metrics and concepts
-- Provide enough context that someone reading only this can understand the significance
-- Maximum 180 words total`;
-    userPrompt = `As an editorial analyst, extract the author's key findings and supporting evidence from this section with enough detail for synthesis:\n\n${request.text}`;
+CRITICAL RULES:
+- PRESERVE SPECIFICITY: Keep exact terminology, framework names, tool names, and concrete concepts (don't generalize "tools" to "technologies")
+- PRESERVE STRUCTURE: If content has lists or classifications (e.g., "types of agents"), extract them as a bulleted list, not as prose
+- PRESERVE RELATIONSHIPS: Show how concepts connect (e.g., "X enables Y because Z")
+- EXTRACT LISTS: Use bullets for multiple items, not run-on sentences
+- EXTRACT NUMBERS: Any metrics, statistics, thresholds, or quantities
+- DEPTH OVER BREVITY: Include concrete details and examples, not abstractions
+
+FORMAT:
+# [Topic heading]
+
+**Key concept 1**: Definition or explanation
+**Key concept 2**: Definition or explanation
+
+Types/Categories (if mentioned):
+- Item A: brief context
+- Item B: brief context
+
+**Why it matters**: 1-2 sentences on significance and impact
+
+**Relationships**: How concepts connect to each other
+
+Maximum 200 words`;
+    userPrompt = `Extract ALL key details, concepts, lists, and relationships from this section. Preserve specificity and structure—use bullets for lists, bold for concepts, and keep terminology exact:\n\n${request.text}`;
   }
 
   const messages = [
