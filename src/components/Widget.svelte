@@ -385,7 +385,7 @@
         width: 650px;
         box-sizing: border-box;
         flex-shrink: 0;
-        contain: layout style paint;
+        contain: layout style;
         backface-visibility: hidden;
     }
 
