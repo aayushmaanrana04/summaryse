@@ -2,7 +2,6 @@
   "name": "summaryse",
   "version": "1.0.0",
   "description": "A Chrome Extension that summarizes selected text using WebLLM for fully local, offline AI inference.",
-  "main": "ai-worker.js",
   "scripts": {
     "build": "node build.mjs",
     "dev": "node build.mjs && echo '✅ Build complete'",

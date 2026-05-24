@@ -39,39 +39,19 @@
     let slidingOut = false;
     let chunksCollapsed = false;
     let updatePending = false;
-    let markdownWorker = null;
-    let parseRequestId = 0;
-    let chunkingWorker = null;
 
     onMount(() => {
         chrome.runtime.onMessage.addListener(handleBackgroundMessage);
-
-        // Initialize markdown worker
-        try {
-            markdownWorker = new Worker(chrome.runtime.getURL('markdown-worker-bundle.js'));
-        } catch (e) {
-            console.warn('[summaryse-widget] Markdown worker initialization failed, falling back to main thread');
-        }
-
-        // Initialize chunking worker
-        try {
-            chunkingWorker = new Worker(chrome.runtime.getURL('chunking-worker-bundle.js'));
-        } catch (e) {
-            console.warn('[summaryse-widget] Chunking worker initialization failed, falling back to main thread');
-        }
 
         initialize();
 
         return () => {
             chrome.runtime.onMessage.removeListener(handleBackgroundMessage);
-            if (markdownWorker) markdownWorker.terminate();
-            if (chunkingWorker) chunkingWorker.terminate();
         };
     });
 
     onDestroy(() => {
         document.body.classList.remove("summaryse-backdrop-added");
-        if (markdownWorker) markdownWorker.terminate();
     });
 
     async function initialize() {

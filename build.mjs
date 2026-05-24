@@ -25,18 +25,6 @@ await esbuild.build({
   logLevel: 'info',
 });
 
-// Build ai-worker.js bundle for browser
-await esbuild.build({
-  entryPoints: ['ai-worker.js'],
-  bundle: true,
-  format: 'esm',
-  outfile: path.join(dist, 'ai-worker-bundle.js'),
-  platform: 'browser',
-  target: 'es2020',
-  external: ['url', 'fs', 'path'],
-  logLevel: 'info',
-});
-
 // Build Svelte content widget with Tailwind CSS for content script injection
 try {
   await esbuild.build({

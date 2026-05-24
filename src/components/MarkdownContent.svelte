@@ -21,7 +21,7 @@
       };
       workerReady = true;
     } catch (e) {
-      console.warn('Markdown worker not available, using main thread');
+      // Worker not available in content script context - main thread fallback is active
       workerReady = false;
     }
   };
