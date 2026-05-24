@@ -4,6 +4,7 @@
         estimateTokens,
         splitIntoChunks,
         isLargeText,
+        isShortText,
         PHASES,
     } from "../utils.js";
 
@@ -126,9 +127,20 @@
         console.log("[summaryse-widget] Starting summarization");
         phase = PHASES.SUMMARIZING;
 
+        const isShortTextFlag = isShortText(text);
         isLargeTextFlag = isLargeText(text);
 
-        if (isLargeTextFlag) {
+        if (isShortTextFlag) {
+            // Short text: TL;DR mode
+            console.log("[summaryse-widget] Short text detected: TL;DR mode");
+            phase = PHASES.STREAMING;
+            chrome.runtime.sendMessage({
+                type: "SUMMARIZE",
+                text: text,
+                style: summaryStyle,
+                isShortText: true,
+            });
+        } else if (isLargeTextFlag) {
             // Large text: chunk it
             chunks = splitIntoChunks(text);
             chunkSummaries = new Array(chunks.length).fill("");
@@ -142,7 +154,8 @@
             phase = PHASES.STREAMING;
             processNextChunk();
         } else {
-            // Small text: single summarization
+            // Medium text: single summarization
+            console.log("[summaryse-widget] Medium text detected: single summarization");
             phase = PHASES.STREAMING;
             chrome.runtime.sendMessage({
                 type: "SUMMARIZE",

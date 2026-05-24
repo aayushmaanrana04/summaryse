@@ -115,10 +115,20 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 
       const style = request.style || "summary";
       let systemPrompt, userPrompt;
-      const { chunkIndex, totalChunks, isChunk, isFinalSummary } = request;
+      const { chunkIndex, totalChunks, isChunk, isFinalSummary, isShortText } = request;
 
-      // Single summarization style - focus on author's intent with heading + key points
-      if (isFinalSummary) {
+      // Short text mode - TL;DR for social media and chat
+      if (isShortText) {
+        systemPrompt = `You are a master of concise communication. Distill the text into a single sharp TL;DR suitable for sharing on social media or chat.
+
+RULES:
+- ONE sentence maximum. If impossible, use TWO sentences only
+- Maximum 30 words total
+- Lead with the main finding or insight
+- Make it punchy and shareable
+- No "In summary" or meta phrases`;
+        userPrompt = `Create a TL;DR (one sentence, max 30 words):\n\n${request.text}`;
+      } else if (isFinalSummary) {
         systemPrompt = `You are an expert synthesis researcher. Your role: merge multiple summaries into ONE coherent narrative revealing the author's core finding, not a collection of repeated points.
 
 CRITICAL RULES (no exceptions):

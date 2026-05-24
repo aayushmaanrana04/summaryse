@@ -52,6 +52,13 @@ export function isLargeText(text, tokenThreshold = 1300) {
   return estimateTokens(text) > tokenThreshold;
 }
 
+// Check if text is short enough for TL;DR mode (social media, messages)
+// Threshold: 300 words (~1,200 characters)
+export function isShortText(text) {
+  const wordCount = text.trim().split(/\s+/).length;
+  return wordCount < 300;
+}
+
 // Get a chunk size estimate for display
 export function getChunkEstimate(text, maxTokensPerChunk = 1500) {
   const totalTokens = estimateTokens(text);
