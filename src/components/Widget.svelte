@@ -23,11 +23,13 @@
     // State
     let phase = PHASES.INIT;
     let summaryStyle = "bullets";
+    let currentSummaryTokens = [];
     let currentSummary = "";
     let modelLoaded = false;
     let isLargeTextFlag = false;
     let chunks = [];
     let chunkSummaries = [];
+    let chunkTokens = [];
     let currentChunkIndex = 0;
     let finalized = false;
     let modalOpen = false;
@@ -38,6 +40,7 @@
     let updatePending = false;
     let markdownWorker = null;
     let parseRequestId = 0;
+    let chunkingWorker = null;
 
     onMount(() => {
         chrome.runtime.onMessage.addListener(handleBackgroundMessage);
@@ -46,7 +49,14 @@
         try {
             markdownWorker = new Worker(chrome.runtime.getURL('markdown-worker-bundle.js'));
         } catch (e) {
-            console.warn('[summaryse-widget] Worker initialization failed, falling back to main thread');
+            console.warn('[summaryse-widget] Markdown worker initialization failed, falling back to main thread');
+        }
+
+        // Initialize chunking worker
+        try {
+            chunkingWorker = new Worker(chrome.runtime.getURL('chunking-worker-bundle.js'));
+        } catch (e) {
+            console.warn('[summaryse-widget] Chunking worker initialization failed, falling back to main thread');
         }
 
         initialize();
@@ -54,6 +64,7 @@
         return () => {
             chrome.runtime.onMessage.removeListener(handleBackgroundMessage);
             if (markdownWorker) markdownWorker.terminate();
+            if (chunkingWorker) chunkingWorker.terminate();
         };
     });
 
@@ -217,35 +228,42 @@
         const token = message.token || "";
 
         if (message.isFinalSummary) {
-            // Accumulate but don't render until COMPLETE
-            currentSummary += token;
+            // Use token array builder instead of string concatenation
+            currentSummaryTokens.push(token);
         } else if (message.chunkIndex !== undefined) {
-            // Chunk streaming - batch updates with 50ms window
-            chunkSummaries[message.chunkIndex] += token;
+            // Chunk streaming - use token array builder
+            if (!chunkTokens[message.chunkIndex]) {
+                chunkTokens[message.chunkIndex] = [];
+            }
+            chunkTokens[message.chunkIndex].push(token);
 
             if (!updatePending) {
                 updatePending = true;
                 setTimeout(() => {
-                    chunkSummaries = chunkSummaries;
+                    // Batch join all tokens
+                    chunkSummaries = chunkTokens.map((tokens, idx) =>
+                        tokens ? tokens.join('') : (chunkSummaries[idx] || '')
+                    );
                     updatePending = false;
                 }, 50);
             }
         } else {
-            // Single text streaming
-            currentSummary += token;
+            // Single text streaming - use token array
+            currentSummaryTokens.push(token);
         }
     }
 
     function handleComplete(message) {
         if (message.isFinalSummary) {
-            currentSummary = message.summary || currentSummary;
+            currentSummary = message.summary || currentSummaryTokens.join('');
+            currentSummaryTokens = [];
             finalized = true;
             phase = PHASES.COMPLETE;
             console.log("[summaryse-widget] Summarization complete");
         } else if (message.chunkIndex !== undefined) {
-            // Chunk complete
+            // Chunk complete - join tokens and finalize
             chunkSummaries[message.chunkIndex] =
-                message.summary || chunkSummaries[message.chunkIndex];
+                message.summary || (chunkTokens[message.chunkIndex]?.join('') || '');
             chunkSummaries = chunkSummaries;
 
             currentChunkIndex++;
@@ -256,7 +274,8 @@
             }
         } else {
             // Single text complete
-            currentSummary = message.summary || currentSummary;
+            currentSummary = message.summary || currentSummaryTokens.join('');
+            currentSummaryTokens = [];
             phase = PHASES.COMPLETE;
             console.log("[summaryse-widget] Summarization complete");
         }
@@ -277,7 +296,9 @@
     function reset() {
         phase = PHASES.INIT;
         currentSummary = "";
+        currentSummaryTokens = [];
         chunkSummaries = [];
+        chunkTokens = [];
         currentChunkIndex = 0;
         finalized = false;
         slidingOut = false;
@@ -328,7 +349,13 @@
                 {/each}
 
                 {#if slidingOut && currentChunkIndex >= chunks.length}
-                    <FinalSummaryCard currentSummary={currentSummary} isBubble={true} bind:modalOpen />
+                    <FinalSummaryCard
+                        currentSummary={currentSummary}
+                        isBubble={true}
+                        bind:modalOpen
+                        onCopy={copy}
+                        onClose={closeWidget}
+                    />
                 {/if}
             {:else}
                 <ChunkCard
@@ -341,7 +368,13 @@
                 />
             {/if}
         {:else if phase === PHASES.COMPLETE}
-            <FinalSummaryCard {currentSummary} isExpandedFinal={true} bind:modalOpen />
+            <FinalSummaryCard
+                {currentSummary}
+                isExpandedFinal={true}
+                bind:modalOpen
+                onCopy={copy}
+                onClose={closeWidget}
+            />
         {:else if phase === PHASES.ERROR}
             <ErrorCard {errorMessage} onRetry={reset} />
         {/if}

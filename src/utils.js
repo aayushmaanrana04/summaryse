@@ -58,6 +58,26 @@ export function getChunkEstimate(text, maxTokensPerChunk = 1500) {
   return Math.ceil(totalTokens / maxTokensPerChunk);
 }
 
+// Pre-compiled regex patterns (avoid recompilation on each call)
+const REGEX_PATTERNS = {
+  h3: /^### (.*?)$/gm,
+  h2: /^## (.*?)$/gm,
+  h1: /^# (.*?)$/gm,
+  boldDouble: /\*\*([^\s].*?[^\s])\*\*/g,
+  boldDoubleShort: /\*\*([^\s])\*\*/g,
+  boldUnderscore: /__([\S].*?[\S])__/g,
+  italicStar: /\*([^\s\*].*?[^\s\*])\*/g,
+  italicStarShort: /\*([^\s\*])\*/g,
+  italicUnderscore: /_([^\s_].*?[^\s_])_/g,
+  italicUnderscoreShort: /_([^\s_])_/g,
+  code: /`([^`]+)`/g,
+  link: /\[([^\]]+)\]\(([^\s)]+)\)/g,
+  bulletList: /^[\s]*[-•*+]\s+(.+)$/gm,
+  bulletListReplace: /(?:^[\s]*[-•*+]\s+.+\n?)+/gm,
+  numberedList: /^[\s]*\d+\.\s+(.+)$/gm,
+  numberedListReplace: /(?:^[\s]*\d+\.\s+.+\n?)+/gm
+};
+
 // Parse markdown and convert to safe HTML - strict mode
 export function parseMarkdown(markdown) {
   if (!markdown) return '';
@@ -65,30 +85,30 @@ export function parseMarkdown(markdown) {
   let html = markdown;
 
   // Headings (h1-h3) - only at line start
-  html = html.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
-  html = html.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
-  html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
+  html = html.replace(REGEX_PATTERNS.h3, '<h3>$1</h3>');
+  html = html.replace(REGEX_PATTERNS.h2, '<h2>$1</h2>');
+  html = html.replace(REGEX_PATTERNS.h1, '<h1>$1</h1>');
 
   // Bold - must be before italic (strict: no whitespace inside)
-  html = html.replace(/\*\*([^\s].*?[^\s])\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/\*\*([^\s])\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/__([\S].*?[\S])__/g, '<strong>$1</strong>');
+  html = html.replace(REGEX_PATTERNS.boldDouble, '<strong>$1</strong>');
+  html = html.replace(REGEX_PATTERNS.boldDoubleShort, '<strong>$1</strong>');
+  html = html.replace(REGEX_PATTERNS.boldUnderscore, '<strong>$1</strong>');
 
   // Italic - only with non-whitespace content
-  html = html.replace(/\*([^\s\*].*?[^\s\*])\*/g, '<em>$1</em>');
-  html = html.replace(/\*([^\s\*])\*/g, '<em>$1</em>');
-  html = html.replace(/_([^\s_].*?[^\s_])_/g, '<em>$1</em>');
-  html = html.replace(/_([^\s_])_/g, '<em>$1</em>');
+  html = html.replace(REGEX_PATTERNS.italicStar, '<em>$1</em>');
+  html = html.replace(REGEX_PATTERNS.italicStarShort, '<em>$1</em>');
+  html = html.replace(REGEX_PATTERNS.italicUnderscore, '<em>$1</em>');
+  html = html.replace(REGEX_PATTERNS.italicUnderscoreShort, '<em>$1</em>');
 
   // Inline code (backticks) - strict
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  html = html.replace(REGEX_PATTERNS.code, '<code>$1</code>');
 
   // Links [text](url) - validate URL format
-  html = html.replace(/\[([^\]]+)\]\(([^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  html = html.replace(REGEX_PATTERNS.link, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
 
   // Lists - convert markdown lists to HTML
   // Process bullet lists
-  const listItems = html.match(/^[\s]*[-•*+]\s+(.+)$/gm) || [];
+  const listItems = html.match(REGEX_PATTERNS.bulletList) || [];
   if (listItems.length > 0) {
     let listHtml = '<ul>';
     listItems.forEach(item => {
@@ -96,7 +116,7 @@ export function parseMarkdown(markdown) {
       listHtml += `<li>${text}</li>`;
     });
     listHtml += '</ul>';
-    html = html.replace(/(?:^[\s]*[-•*+]\s+.+\n?)+/gm, listHtml);
+    html = html.replace(REGEX_PATTERNS.bulletListReplace, listHtml);
   }
 
   // Blockquotes

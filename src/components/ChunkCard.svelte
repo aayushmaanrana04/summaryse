@@ -12,14 +12,19 @@
   export { className as class };
 
   let canExpand = false;
+  let prevSummaryEmpty = true;
 
   $: hasContent = summary !== '';
 
-  $: if (hasContent && isBubble && !canExpand) {
-    // Defer expansion to next frame to avoid animation lag
-    requestAnimationFrame(() => {
-      canExpand = true;
-    });
+  // Only expand when transitioning from empty to non-empty
+  $: {
+    const isEmpty = !hasContent;
+    if (prevSummaryEmpty && !isEmpty && isBubble && !canExpand) {
+      requestAnimationFrame(() => {
+        canExpand = true;
+      });
+    }
+    prevSummaryEmpty = isEmpty;
   }
 
   $: shouldExpand = canExpand && isBubble;
@@ -76,25 +81,25 @@
     border-radius: 32px;
     padding: 20px;
     animation: bubbleExpandLeft 600ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    will-change: width, border-radius, opacity;
+    will-change: transform, border-radius, opacity;
     transform-origin: right center;
   }
 
   @keyframes bubbleExpandLeft {
     0% {
-      width: 40px;
+      transform: scaleX(0.06);
       height: 40px;
       border-radius: 20px;
       opacity: 0.8;
     }
     50% {
-      width: 680px;
+      transform: scaleX(1.05);
       height: 40px;
       border-radius: 20px;
       opacity: 1;
     }
     100% {
-      width: 650px;
+      transform: scaleX(1);
       height: auto;
       border-radius: 32px;
       opacity: 1;

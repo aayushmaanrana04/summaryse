@@ -32,7 +32,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["markdown-worker-bundle.js"],
+      "resources": ["markdown-worker-bundle.js", "chunking-worker-bundle.js"],
       "matches": ["<all_urls>"]
     }
   ]

@@ -5,16 +5,23 @@
   export let modalOpen = false;
   export let isBubble = false;
   export let isExpandedFinal = false;
+  export let onCopy = () => {};
+  export let onClose = () => {};
 
   let canExpand = false;
+  let prevSummaryEmpty = true;
 
   $: hasContent = currentSummary !== '';
 
-  $: if (hasContent && isBubble && !canExpand) {
-    // Defer expansion to next frame to avoid animation lag
-    requestAnimationFrame(() => {
-      canExpand = true;
-    });
+  // Only expand when transitioning from empty to non-empty
+  $: {
+    const isEmpty = !hasContent;
+    if (prevSummaryEmpty && !isEmpty && isBubble && !canExpand) {
+      requestAnimationFrame(() => {
+        canExpand = true;
+      });
+    }
+    prevSummaryEmpty = isEmpty;
   }
 
   $: shouldExpand = canExpand && isBubble;
@@ -29,13 +36,22 @@
   {:else}
     <div class="card-header">
       <h2 class="card-title">Summary</h2>
-      <button
-        class="expand-btn"
-        on:click={() => (modalOpen = true)}
-        title="Expand to full screen"
-      >
-        ⛶
-      </button>
+      <div class="action-buttons">
+        <button
+          class="icon-btn copy-btn"
+          on:click={onCopy}
+          title="Copy summary"
+        >
+          📋
+        </button>
+        <button
+          class="icon-btn close-btn"
+          on:click={onClose}
+          title="Close widget"
+        >
+          ✕
+        </button>
+      </div>
     </div>
 
     <div class="card-content">
@@ -75,25 +91,25 @@
     border-radius: 32px;
     padding: 20px;
     animation: bubbleExpandLeft 600ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    will-change: width, border-radius, opacity;
+    will-change: transform, border-radius, opacity;
     transform-origin: right center;
   }
 
   @keyframes bubbleExpandLeft {
     0% {
-      width: 40px;
+      transform: scaleX(0.06);
       height: 40px;
       border-radius: 20px;
       opacity: 0.8;
     }
     50% {
-      width: 680px;
+      transform: scaleX(1.05);
       height: 40px;
       border-radius: 20px;
       opacity: 1;
     }
     100% {
-      width: 650px;
+      transform: scaleX(1);
       height: auto;
       border-radius: 32px;
       opacity: 1;
@@ -158,24 +174,36 @@
     font-family: 'Space Grotesk', sans-serif;
   }
 
-  .expand-btn {
-    width: 28px;
-    height: 28px;
+  .action-buttons {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .icon-btn {
+    width: 30px;
+    height: 30px;
     border: none;
-    background: transparent;
+    background: rgba(0, 0, 0, 0.04);
     color: #000000;
-    font-size: 14px;
+    font-size: 15px;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 5px;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
   }
 
-  .expand-btn:hover {
+  .icon-btn:hover:not(:disabled) {
     background: rgba(0, 0, 0, 0.08);
-    transform: scale(1.1);
+    transform: translateY(-1px);
+  }
+
+  .icon-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
   }
 
   .card-content {

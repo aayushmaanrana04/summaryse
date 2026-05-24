@@ -76,6 +76,23 @@ try {
   process.exit(1);
 }
 
+// Build chunking worker
+try {
+  await esbuild.build({
+    entryPoints: ['chunking-worker.js'],
+    bundle: true,
+    outfile: path.join(dist, 'chunking-worker-bundle.js'),
+    format: 'iife',
+    platform: 'browser',
+    target: 'chrome100',
+    logLevel: 'info',
+  });
+  console.log('✅ Chunking worker build complete!');
+} catch (error) {
+  console.error('Chunking worker build failed:', error.message);
+  process.exit(1);
+}
+
 // Copy manifest.json to dist
 fs.copyFileSync('manifest.json', path.join(dist, 'manifest.json'));
 

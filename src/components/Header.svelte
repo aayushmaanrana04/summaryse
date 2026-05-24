@@ -12,11 +12,13 @@
   export let phase = 'init';
   export let isLargeText = false;
 
-  const styles = [
-    { key: 'bullets', label: 'Bullets' },
-    { key: 'tldr', label: 'TL;DR' },
-    { key: 'paragraph', label: 'Paragraph' }
-  ];
+  // SINGLE PROMPT STYLE - only one summarization format now
+  // Commenting out style selector (tldr, paragraph, takeaways)
+  // const styles = [
+  //   { key: 'bullets', label: 'Bullets' },
+  //   { key: 'tldr', label: 'TL;DR' },
+  //   { key: 'paragraph', label: 'Paragraph' }
+  // ];
 </script>
 
 <div class="summaryse-base-card header">
@@ -31,6 +33,7 @@
 
   <div class="spacer"></div>
 
+  <!-- SINGLE PROMPT STYLE - style selector removed (only one summarization format now)
   <div class="style-selector">
     {#each styles as style (style.key)}
       <button
@@ -43,6 +46,7 @@
       </button>
     {/each}
   </div>
+  -->
 
   <div class="action-buttons">
     <button
